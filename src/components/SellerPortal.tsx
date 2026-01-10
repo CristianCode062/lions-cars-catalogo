@@ -1112,40 +1112,40 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ car, onCancel, onSubmit }) =>
   return;
 }
     const vehiculoCompleto: Vehiculo = {
-      id: car?.id || Date.now(),
-      marca: formData.marca || '',
-      modelo: formData.modelo || '',
-      version: formData.version || '',
-      ano: formData.ano || 2024,
-      precio: formData.precio || 0,
-      km: formData.km || 0,
-      duenos: formData.duenos || 1,
-      traccion: formData.traccion || 'Delantera',
-      transmision: formData.transmision || 'Automática',
-      cilindrada: formData.cilindrada || '2.0L',
-      combustible: formData.combustible || 'Gasolina',
-      tipoVenta: (formData.tipoVenta as 'Propio' | 'Consignado') || 'Propio',
-      vendedor: formData.vendedor || 'Admin Elite',
-      financiable: formData.financiable ?? true,
-      valorPie: formData.valorPie || 0,
-      aire: formData.aire ?? true,
-      neumaticos: formData.neumaticos || 'Buenos',
-      llaves: formData.llaves || 2,
-      obs: formData.obs || 'Vehículo en excelente estado',
-      imagenes: formData.imagen ? [formData.imagen] : ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800'],
-      estado: (formData.estado as 'Disponible' | 'Vendido' | 'Reservado') || 'Disponible',
-      diasStock: formData.diasStock || 0,
-      vistas: formData.vistas || 0,
-      interesados: formData.interesados || 0,
-      patente: formData.patente || '',
-      color: formData.color || '',
-      comisionEstimada,
-      precioHistorial: car?.precioHistorial || [{ date: new Date().toISOString().split('T')[0], price: formData.precio || 0 }],
-      imagen: formData.imagen || ''
-    };
+  id: car?.id || Date.now(),
+  marca: formData.marca || '',
+  modelo: formData.modelo || '',
+  version: formData.version || '',
+  ano: formData.ano || 2024,
+  precio: formData.precio || 0,
+  km: formData.km || 0,
+  duenos: formData.duenos || 1,
+  traccion: formData.traccion || 'Delantera',
+  transmision: formData.transmision || 'Automática',
+  cilindrada: formData.cilindrada || '2.0L',
+  combustible: formData.combustible || 'Gasolina',
+  tipoVenta: (formData.tipoVenta as 'Propio' | 'Consignado') || 'Propio',
+  vendedor: formData.vendedor || 'Admin Elite',
+  financiable: formData.financiable ?? true,
+  valorPie: formData.valorPie || 0,
+  aire: formData.aire ?? true,
+  neumaticos: formData.neumaticos || 'Buenos',
+  llaves: formData.llaves || 2,
+  obs: formData.obs || 'Vehículo en excelente estado',
+  imagenes: formData.imagenes && formData.imagenes.length > 0 ? formData.imagenes : ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800'],
+  estado: (formData.estado as 'Disponible' | 'Vendido' | 'Reservado') || 'Disponible',
+  diasStock: formData.diasStock || 0,
+  vistas: formData.vistas || 0,
+  interesados: formData.interesados || 0,
+  patente: formData.patente || '',
+  color: formData.color || '',
+  comisionEstimada,
+  precioHistorial: car?.precioHistorial || [{ date: new Date().toISOString().split('T')[0], price: formData.precio || 0 }],
+  imagen: formData.imagen || ''
+};
 
-    console.log('✅ Vehículo completo:', vehiculoCompleto);
-    console.log('📸 Imágenes:', vehiculoCompleto.imagenes);
+console.log('✅ Vehículo completo:', vehiculoCompleto);
+console.log('📸 Imágenes:', vehiculoCompleto.imagenes);
 
     onSubmit(vehiculoCompleto);
   };
@@ -1248,45 +1248,66 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ car, onCancel, onSubmit }) =>
                   multiple
                   className="hidden"
                   onChange={async (e) => {
-                    const files = e.target.files;
-                    if (!files || files.length === 0) return;
-                    const marcaValida = formData.marca && formData.marca.trim().length > 0;
-                    const modeloValido = formData.modelo && formData.modelo.trim().length > 0;
-                    if (!marcaValida || !modeloValido) {
-                      alert('Debes completar Marca y Modelo antes de subir la imagen.');
-                      console.warn('Subida de imagen bloqueada por datos inválidos:', { marca: formData.marca, modelo: formData.modelo });
-                      e.target.value = '';
-                      return;
-                    }
-                    const nuevasImagenes: string[] = [];
-                    for (let i = 0; i < files.length; i++) {
-                      const file = files[i];
-                      const form = new FormData();
-                      form.append('image', file);
-                      form.append('marca', String(formData.marca ?? ''));
-                      form.append('modelo', String(formData.modelo ?? ''));
-                      try {
-                        const res = await fetch('/upload', {
-                          method: 'POST',
-                          body: form
-                        });
-                        if (!res.ok) throw new Error('Error al subir la imagen');
-                        const data = await res.json();
-                        const url = data.url.replace('/public', '');
-                        nuevasImagenes.push(url);
-                      } catch (err) {
-                        alert('Error al subir la imagen');
-                        console.error('Error al subir la imagen:', err);
-                      }
-                    }
-                    if (nuevasImagenes.length > 0) {
-                      setFormData(prev => ({
-                        ...prev,
-                        imagen: nuevasImagenes[0],
-                        imagenes: [...(prev.imagenes || []), ...nuevasImagenes]
-                      }));
-                    }
-                  }}
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  
+  const marcaValida = formData.marca && formData.marca.trim().length > 0;
+  const modeloValido = formData.modelo && formData.modelo.trim().length > 0;
+  
+  if (!marcaValida || !modeloValido) {
+    alert('Debes completar Marca y Modelo antes de subir la imagen.');
+    console.warn('Subida bloqueada:', { marca: formData.marca, modelo: formData.modelo });
+    e.target.value = '';
+    return;
+  }
+
+  const nuevasImagenes: string[] = [];
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const form = new FormData();
+    form.append('image', file);
+    form.append('marca', String(formData.marca ?? ''));
+    form.append('modelo', String(formData.modelo ?? ''));
+    
+    try {
+      const res = await fetch('http://localhost:4000/upload', {
+        method: 'POST',
+        body: form
+      });
+      
+      if (!res.ok) throw new Error(`Error al subir ${file.name}`);
+      
+      const data = await res.json();
+      const url = data.url.replace('/public', '');
+      nuevasImagenes.push(url);
+      
+      console.log(`✅ Imagen ${i+1}/${files.length} subida:`, url);
+    } catch (err) {
+      console.error(`❌ Error subiendo ${file.name}:`, err);
+      alert(`Error al subir ${file.name}`);
+    }
+  }
+
+  if (nuevasImagenes.length > 0) {
+    setFormData(prev => {
+      const imagenesActuales = prev.imagenes || [];
+      const todasLasImagenes = [...imagenesActuales, ...nuevasImagenes];
+      
+      console.log('📸 Total de imágenes ahora:', todasLasImagenes);
+      
+      return {
+        ...prev,
+        imagen: todasLasImagenes[0],
+        imagenes: todasLasImagenes
+      };
+    });
+    
+    alert(`✅ ${nuevasImagenes.length} imagen(es) agregada(s)`);
+  }
+  
+  e.target.value = '';
+}}
                 />
               </motion.label>
               {formData.imagenes && formData.imagenes.length > 0 && (
