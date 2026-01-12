@@ -644,7 +644,81 @@ const DetailItem = ({ icon: Icon, label, value, highlight = false }: {
 
 
 // HERO VISUAL: Banner animado con imágenes destacadas
+{/* SECCIÓN HERO / BANNER PRINCIPAL CON TU IMAGEN DSC06884.JPG */}
+<motion.div
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6 }}
+  className="mb-12"
+>
+  <motion.div
+    className="relative flex justify-center items-center overflow-hidden rounded-3xl bg-black h-[400px] md:h-[500px] border border-gray-800 shadow-2xl shadow-red-900/10"
+    initial={{ scale: 0.95, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ duration: 0.8, ease: "easeOut" }}
+    whileHover={{ scale: 1.01 }}
+  >
+    {/* 1. Fondo con tu Imagen DSC06884.JPG */}
+    <div className="absolute inset-0 z-0">
+      <img
+        src="/DSC06884.JPG" 
+        alt="Autoefec Hero"
+        className="w-full h-full object-cover opacity-70 scale-105"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80"; // Imagen de respaldo si no carga
+        }}
+      />
+      {/* Overlay gradiente para fundir la imagen con el negro del fondo */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent"></div>
+    </div>
 
+    {/* 2. Sombras y Brillos Ambientales Animados (Tonos Rojos) */}
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-red-900/30 blur-[100px] pointer-events-none"
+      animate={{
+        scale: [1, 1.2, 1],
+        opacity: [0.3, 0.5, 0.3],
+      }}
+      transition={{
+        duration: 5,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    />
+
+    {/* 3. Contenido Central (Texto Principal) */}
+    <div className="relative z-10 flex flex-col items-center text-center px-4">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white mb-2 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
+          AUTO<span className="text-red-600">EFEC</span>
+        </h1>
+        <div className="h-1 w-24 bg-red-600 mx-auto mb-4 rounded-full"></div>
+        <p className="text-gray-200 text-sm md:text-base tracking-[0.4em] uppercase font-bold drop-shadow-md">
+          Tu Auto Ideal
+        </p>
+      </motion.div>
+
+      {/* 4. Anillos de luz decorativos sobre la imagen */}
+      <motion.div
+        className="absolute w-[350px] h-[350px] rounded-full border border-red-500/20 pointer-events-none"
+        animate={{
+          scale: [0.8, 1.5],
+          opacity: [0.5, 0],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeOut",
+        }}
+      />
+    </div>
+  </motion.div>
+</motion.div>
 
 function App() {
   const [stock, setStock] = useState<Vehiculo[]>(() => loadStockFromLocalStorage());
@@ -803,91 +877,50 @@ function App() {
 
 
   return (
-    <div className="min-h-screen bg-black text-gray-100 font-sans">
+    <div className="min-h-screen bg-black text-gray-100 font-sans selection:bg-red-600/30">
       <div className="relative">
-        <div className="absolute inset-0 h-[500px] overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-0 inset-x-0 h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900/60 via-black to-black"></div>
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-600/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-        </div>
-
+        {/* Header Superior */}
         <motion.header
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="sticky top-0 z-40 bg-black/90 backdrop-blur-xl border-b border-gray-800 shadow-lg shadow-black/30"
+          transition={{ duration: 0.5 }}
+          className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-gray-800/50"
         >
-          <div className="max-w-xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <motion.div
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => setCurrentView('catalog')}
-              whileHover={{ x: -3 }}
-              transition={{ type: "spring", stiffness: 300 }}
             >
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: -2 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 400 }}
-                className="relative"
-                initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
-                animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-red-800/20 blur-xl group-hover:blur-2xl transition-all rounded-full" />
-                <img
-                  src="/logos/autoefec.png"
-                  alt="Autoefec Logo"
-                  className="h-20 w-auto relative z-10 drop-shadow-2xl group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='56' viewBox='0 0 120 56'%3E%3Ctext x='10' y='40' font-size='32' fill='%23dc2626' font-weight='bold' font-style='italic'%3EAutoefec%3C/text%3E%3C/svg%3E";
-                  }}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ x: -15, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-                className="hidden sm:block"
-              >
-                <p className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-bold leading-none group-hover:text-red-400 transition-colors">
-                  Tu Auto Ideal
-                </p>
-              </motion.div>
+              <img
+                src="/logos/autoefec.png"
+                alt="Autoefec Logo"
+                className="h-12 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Ctext x='0' y='30' font-size='24' fill='%23dc2626' font-weight='bold' font-style='italic'%3EAUTOEFEC%3C/text%3E%3C/svg%3E";
+                }}
+              />
             </motion.div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {currentView === 'catalog' && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-2"
-                >
-                  Favoritos
-                  {favorites.length > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 500 }}
-                      className="bg-red-600 text-white text-[10px] font-bold px-1.5 rounded-full"
-                    >
-                      {favorites.length}
-                    </motion.span>
-                  )}
-                </motion.button>
+                <button className="hidden md:flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors font-medium">
+                  Favoritos <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{favorites.length}</span>
+                </button>
               )}
-
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentView(currentView === 'catalog' ? 'seller' : 'catalog')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all ${currentView === 'catalog'
-                    ? 'bg-gray-900 text-white hover:bg-red-600'
-                    : 'bg-gray-800 text-red-400 border border-red-700 hover:bg-gray-700'
-                  }`}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
+                  currentView === 'catalog'
+                    ? 'bg-white text-black hover:bg-red-600 hover:text-white'
+                    : 'bg-gray-800 text-red-400 border border-red-900/50'
+                }`}
               >
                 {currentView === 'catalog' ? (
                   <>
                     <LayoutDashboard size={18} />
-                    <span className="hidden sm:inline">Portal Vendedor</span>
+                    <span>Portal Vendedor</span>
                   </>
                 ) : (
                   <>
@@ -900,323 +933,134 @@ function App() {
           </div>
         </motion.header>
 
+        {/* ================= SECCIÓN HERO (Solo en Catálogo) ================= */}
         {currentView === 'catalog' && (
-          <div className="relative z-10 max-w-3xl mx-auto px-4 pt-10 pb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-12"
-            >
-              <motion.div
-  className="mb-12 relative flex justify-center items-center overflow-hidden rounded-2xl bg-black h-[600px] md:h-[600px] lg:h-[300px]"
-  initial={{ scale: 0.8, opacity: 0, y: 20 }}
-  animate={{ scale: 1, opacity: 1, y: 0 }}
-  transition={{ duration: 0.8, ease: "easeOut" }}
-  whileHover={{ scale: 1.02, y: -5 }}
->
-                {/* Video de fondo */}
-               
-
-
-                {/* Sombras múltiples animadas */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-br from-red-600/40 to-red-800/40 blur-[100px]"
-                  animate={{
-                    scale: [1, 1.1, 1],
-                    opacity: [0.4, 0.6, 0.4]
-                  }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
+          <>
+            <div className="relative h-[500px] md:h-[650px] w-full overflow-hidden flex items-center justify-center">
+              {/* Imagen de Fondo con Zoom Inercial */}
+              <motion.div 
+                className="absolute inset-0 z-0"
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 2, ease: "easeOut" }}
+              >
+                <img
+                  src="/DSC06884.JPG" 
+                  className="w-full h-full object-cover opacity-70"
+                  alt="Background"
                 />
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-tr from-red-500/30 to-orange-600/30 blur-[120px]"
-                  animate={{
-                    scale: [1.1, 1, 1.1],
-                    opacity: [0.3, 0.5, 0.3]
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5
-                  }}
-                />
-
-                
-
-                {/* Anillos de luz animados */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-red-500/20"
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [0.5, 0, 0.5]
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeOut"
-                  }}
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-red-600/30"
-                  animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.4, 0, 0.4]
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeOut",
-                    delay: 0.5
-                  }}
-                />
+                {/* Capas de Profundidad */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black opacity-80" />
               </motion.div>
 
-            </motion.div>
+              {/* Contenido Hero */}
+              <div className="relative z-10 text-center px-4">
+                <motion.div
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 1 }}
+                >
+                  <h1 className="text-6xl md:text-[9rem] font-black italic tracking-tighter text-white leading-none drop-shadow-2xl">
+                    AUTO<span className="text-red-600 text-glow">EFEC</span>
+                  </h1>
+                  <p className="text-gray-400 text-xs md:text-xl uppercase tracking-[0.5em] mt-4 font-light">
+                    La excelencia automotriz a tu alcance
+                  </p>
+                </motion.div>
+              </div>
+            </div>
 
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="space-y-3"
-            >
-              <div className="bg-gray-900 border border-gray-800 p-2 rounded-2xl flex flex-col md:flex-row gap-2 shadow-xl max-w-4xl">
-                <div className="flex-grow flex items-center bg-gray-800 rounded-xl px-4 border border-gray-700 hover:border-gray-500 transition-colors focus-within:border-red-600/50">
-                  <Search size={20} className="text-gray-500" />
+            {/* BARRA DE BÚSQUEDA FLOTANTE */}
+            <div className="max-w-5xl mx-auto px-4 -mt-16 relative z-30">
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="bg-gray-900/90 backdrop-blur-2xl border border-gray-800 p-3 md:p-4 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row gap-3"
+              >
+                <div className="flex-grow relative group">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" size={22} />
                   <input
                     type="text"
-                    placeholder="Buscar por marca, modelo o año..."
-                    className="w-full bg-transparent border-none text-gray-100 px-3 py-4 focus:ring-0 placeholder-gray-400 outline-none"
+                    placeholder="Busca tu próximo auto..."
+                    className="w-full bg-gray-800/50 border-none rounded-3xl py-5 pl-14 pr-6 text-white focus:ring-2 focus:ring-red-600/20 transition-all placeholder:text-gray-500 font-medium"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  {searchTerm && (
-                    <button onClick={() => setSearchTerm('')} className="text-gray-500 hover:text-gray-900">
-                      <X size={16} />
-                    </button>
-                  )}
                 </div>
-
-                <div className="h-[1px] md:h-auto md:w-[1px] bg-gray-700 mx-1"></div>
-
-                <div className="relative min-w-[240px]">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-red-600 pointer-events-none">
-                    <Filter size={18} />
-                  </div>
-                  <select
-                    value={selectedSeller}
-                    onChange={(e) => setSelectedSeller(e.target.value)}
-                    className="w-full bg-gray-800 text-gray-100 pl-11 pr-10 py-4 rounded-xl border border-gray-700 appearance-none cursor-pointer hover:bg-gray-700 transition-colors focus:ring-2 focus:ring-red-600/20 focus:border-red-600/50 outline-none"
+                
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`px-8 rounded-3xl flex items-center gap-2 font-bold transition-all ${showFilters ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
                   >
-                    {sellers.map(s => <option key={s} value={s}>{s === 'Todos' ? 'Todos los Vendedores' : s}</option>)}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <ChevronRight size={16} className="rotate-90" />
-                  </div>
+                    <Filter size={20} />
+                    <span>Filtros</span>
+                  </button>
                 </div>
+              </motion.div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`relative px-6 py-4 rounded-xl font-bold flex items-center gap-2 transition-all whitespace-nowrap ${showFilters
-                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                      : 'bg-gray-800 text-gray-100 border border-gray-700 hover:border-red-600/50'
-                    }`}
-                >
-                  <Filter size={18} />
-                  <span>Filtros Avanzados</span>
-                  {activeFiltersCount > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center"
-                    >
-                      {activeFiltersCount}
-                    </motion.span>
-                  )}
-                </motion.button>
-              </div>
-
+              {/* Panel de Filtros Animado */}
               <AnimatePresence>
                 {showFilters && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0, y: -20 }}
-                    animate={{ opacity: 1, height: 'auto', y: 0 }}
-                    exit={{ opacity: 0, height: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl overflow-hidden max-w-4xl"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 10 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="bg-gray-900 border border-gray-800 rounded-3xl p-8 mt-4 shadow-2xl"
                   >
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold text-gray-100 flex items-center gap-2">
-                        <Filter className="text-red-600" size={20} />
-                        Filtros Avanzados
-                      </h3>
-                      <button
-                        onClick={clearAllFilters}
-                        className="text-sm text-red-400 hover:text-red-300 font-medium flex items-center gap-1 transition-colors"
-                      >
-                        <X size={16} /> Limpiar Todo
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Marca</label>
-                        <select
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       {/* Selector de Vendedor */}
+                       <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Vendedor</label>
+                        <select 
+                          value={selectedSeller}
+                          onChange={(e) => setSelectedSeller(e.target.value)}
+                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 text-sm text-white focus:border-red-600 transition-all"
+                        >
+                          {sellers.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      
+                      {/* Filtro Marca */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Marca</label>
+                        <select 
                           value={filters.marca}
-                          onChange={(e) => setFilters({ ...filters, marca: e.target.value })}
-                          className="filter-select dark"
+                          onChange={(e) => setFilters({...filters, marca: e.target.value})}
+                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 text-sm text-white focus:border-red-600 transition-all"
                         >
                           {marcas.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                       </div>
 
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Año Desde</label>
-                        <input
+                      {/* Filtro Año */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Año Máximo</label>
+                        <input 
                           type="number"
-                          placeholder="Ej: 2015"
-                          value={filters.yearMin}
-                          onChange={(e) => setFilters({ ...filters, yearMin: e.target.value })}
-                          className="filter-input dark"
+                          placeholder="2024"
+                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-red-600"
+                          onChange={(e) => setFilters({...filters, yearMax: e.target.value})}
                         />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Año Hasta</label>
-                        <input
-                          type="number"
-                          placeholder="Ej: 2024"
-                          value={filters.yearMax}
-                          onChange={(e) => setFilters({ ...filters, yearMax: e.target.value })}
-                          className="filter-input dark"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Precio Desde (CLP)</label>
-                        <input
-                          type="number"
-                          placeholder="Ej: 5000000"
-                          value={filters.priceMin}
-                          onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
-                          className="filter-input dark"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Precio Hasta (CLP)</label>
-                        <input
-                          type="number"
-                          placeholder="Ej: 50000000"
-                          value={filters.priceMax}
-                          onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
-                          className="filter-input dark"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Km Máximo</label>
-                        <input
-                          type="number"
-                          placeholder="Ej: 100000"
-                          value={filters.kmMax}
-                          onChange={(e) => setFilters({ ...filters, kmMax: e.target.value })}
-                          className="filter-input dark"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Combustible</label>
-                        <select
-                          value={filters.combustible}
-                          onChange={(e) => setFilters({ ...filters, combustible: e.target.value })}
-                          className="filter-select dark"
-                        >
-                          {combustibles.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Transmisión</label>
-                        <select
-                          value={filters.transmision}
-                          onChange={(e) => setFilters({ ...filters, transmision: e.target.value })}
-                          className="filter-select dark"
-                        >
-                          <option value="Todas">Todas</option>
-                          <option value="Automática">Automática</option>
-                          <option value="Mecánica">Mecánica</option>
-                          <option value="CVT">CVT</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Tracción</label>
-                        <select
-                          value={filters.traccion}
-                          onChange={(e) => setFilters({ ...filters, traccion: e.target.value })}
-                          className="filter-select dark"
-                        >
-                          {tracciones.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Tipo de Venta</label>
-                        <select
-                          value={filters.tipoVenta}
-                          onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.value })}
-                          className="filter-select dark"
-                        >
-                          <option value="Todos">Todos</option>
-                          <option value="Propio">Propio</option>
-                          <option value="Consignado">Consignado</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-300 uppercase mb-2 block">Financiable</label>
-                        <select
-                          value={filters.financiable}
-                          onChange={(e) => setFilters({ ...filters, financiable: e.target.value })}
-                          className="filter-select dark"
-                        >
-                          <option value="Todos">Todos</option>
-                          <option value="Si">Sí</option>
-                          <option value="No">No</option>
-                        </select>
                       </div>
                     </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-800 flex items-center justify-between">
-                      <p className="text-sm text-gray-300">
-                        Mostrando <span className="text-red-600 font-bold">{filteredStock.length}</span> vehículos
-                      </p>
-                      <button
-                        onClick={() => setShowFilters(false)}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-lg transition-all"
-                      >
-                        Aplicar Filtros
-                      </button>
+                    
+                    <div className="mt-8 flex justify-between items-center">
+                        <button onClick={clearAllFilters} className="text-gray-500 hover:text-red-500 text-sm font-bold transition-colors underline underline-offset-4">Limpiar filtros</button>
+                        <button onClick={() => setShowFilters(false)} className="bg-white text-black px-8 py-3 rounded-xl font-black text-sm hover:bg-red-600 hover:text-white transition-all">Ver Resultados ({filteredStock.length})</button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
-      <main className=" mx-auto px-2 pb-2 relative z-10">
-        {/* Botón para agregar auto removido, solo SellerPortal puede agregar autos */}
-        {/* Modal para agregar auto removido, solo SellerPortal puede agregar autos */}
+      {/* Cuerpo Principal */}
+      <main className="max-w-7xl mx-auto px-6 pt-20 pb-20 relative z-10">
         <AnimatePresence mode="wait">
           {currentView === 'catalog' ? (
             <motion.div
@@ -1225,22 +1069,8 @@ function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="mb-6 flex items-center justify-between text-sm text-gray-300 flex-wrap gap-3">
-                <p>Mostrando <span className="text-gray-100 font-bold">{filteredStock.length}</span> de {stock.length} vehículos</p>
-                {activeFiltersCount > 0 && (
-                  <motion.button
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    onClick={clearAllFilters}
-                    className="text-red-400 hover:text-red-300 font-medium flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg border border-red-700 transition-all hover:bg-gray-700"
-                  >
-                    <X size={16} /> Limpiar {activeFiltersCount} filtro{activeFiltersCount > 1 ? 's' : ''}
-                  </motion.button>
-                )}
-              </div>
-
               {filteredStock.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                   {filteredStock.map((car, i) => (
                     <motion.div
                       key={car.id}
@@ -1248,24 +1078,20 @@ function App() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
                     >
-                      <div className="relative">
-                        <CarCard
-                          car={car}
-                          onClick={setSelectedCar}
-                          isFavorite={favorites.includes(car.id)}
-                          onToggleFavorite={toggleFavorite}
-                        />
-                        {/* Editar/Eliminar solo en SellerPortal, no en catálogo público */}
-                      </div>
+                      <CarCard
+                        car={car}
+                        onClick={setSelectedCar}
+                        isFavorite={favorites.includes(car.id)}
+                        onToggleFavorite={toggleFavorite}
+                      />
                     </motion.div>
                   ))}
-                  {/* Eliminada lógica de edición/eliminación de autos */}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-32 text-gray-500 border border-dashed border-gray-700 rounded-3xl bg-gray-900">
-                  <div className="bg-gray-100 p-4 rounded-full mb-4"><Search size={32} className="text-gray-400" /></div>
-                  <p className="text-lg font-medium text-gray-900">No encontramos vehículos</p>
-                  <p className="text-sm">Intenta con otros términos o filtros.</p>
+                <div className="text-center py-20 bg-gray-900/50 rounded-[3rem] border border-dashed border-gray-800">
+                  <Search size={48} className="mx-auto text-gray-700 mb-4" />
+                  <p className="text-xl font-bold text-gray-400">No hay vehículos que coincidan</p>
+                  <button onClick={clearAllFilters} className="mt-4 text-red-500 font-bold hover:underline">Restablecer búsqueda</button>
                 </div>
               )}
             </motion.div>
@@ -1279,33 +1105,18 @@ function App() {
               <SellerPortal
                 stock={stock}
                 onBack={() => setCurrentView('catalog')}
-                onAdd={(car) => {
-                  handleAddCar(car);
-                  setCurrentView('catalog');
-                }}
+                onAdd={(car) => { handleAddCar(car); setCurrentView('catalog'); }}
                 onUpdate={(updated) => {
-                  setStock(prev => prev.map(s => {
-                    if (s.id !== updated.id) return s;
-                    const historial = s.precioHistorial ?? [];
-                    const today = new Date().toISOString().split('T')[0];
-                    const newHistorial = updated.precio !== s.precio
-                      ? [...historial, { date: today, price: updated.precio }]
-                      : historial;
-                    return {
-                      ...updated,
-                      precioHistorial: newHistorial,
-                    };
-                  }));
+                  setStock(prev => prev.map(s => s.id === updated.id ? { ...updated, precioHistorial: updated.precio !== s.precio ? [...(s.precioHistorial || []), { date: new Date().toISOString().split('T')[0], price: updated.precio }] : s.precioHistorial } : s));
                 }}
-                onDelete={(id) => {
-                  setStock(prev => prev.filter(s => s.id !== id));
-                }}
+                onDelete={(id) => setStock(prev => prev.filter(s => s.id !== id))}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
+      {/* Modales y Notificaciones */}
       <AnimatePresence>
         {selectedCar && <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} onContact={handleContact} />}
       </AnimatePresence>
@@ -1313,81 +1124,23 @@ function App() {
       <AnimatePresence>
         {notification && (
           <motion.div
-            initial={{ y: 50, opacity: 0, scale: 0.9 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 20, opacity: 0, scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="fixed bottom-8 right-8 z-50 bg-[#25D366] text-white p-4 pr-6 rounded-2xl shadow-2xl flex items-center gap-4 max-w-[90vw] backdrop-blur-md border border-white/20"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-10 right-10 z-[100] bg-[#25D366] text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/20"
           >
-            <div className="bg-black/40 p-2 rounded-full flex-shrink-0"><MessageCircle size={24} /></div>
+            <MessageCircle size={28} />
             <div>
-              <h4 className="font-bold">{notification.message}</h4>
-              <p className="text-white/90 text-xs font-medium">{notification.sub}</p>
+              <p className="font-black leading-none">{notification.message}</p>
+              <p className="text-xs opacity-80 mt-1">{notification.sub}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <style>{`
-        .filter-select, .filter-input {
-          width: 100%;
-          background: rgba(17, 24, 39, 1);
-          border: 1px solid rgba(55, 65, 81, 1);
-          border-radius: 0.75rem;
-          padding: 0.75rem 1rem;
-          color: rgba(243, 244, 246, 1);
-          outline: none;
-          transition: all 0.2s;
-          font-size: 0.875rem;
-        }
-        .filter-select.dark, .filter-input.dark {
-          background: rgba(17, 24, 39, 1);
-          border: 1px solid rgba(55, 65, 81, 1);
-          color: rgba(243, 244, 246, 1);
-        }
-        .filter-select {
-          appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right 0.75rem center;
-          background-size: 1.25rem;
-          padding-right: 2.5rem;
-          cursor: pointer;
-        }
-        .filter-select:hover, .filter-input:hover {
-          border-color: rgba(220, 38, 38, 0.5);
-          background: rgba(31, 41, 55, 1);
-        }
-        .filter-select:focus, .filter-input:focus {
-          border-color: #dc2626;
-          box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-        .filter-input::placeholder {
-          color: #6b7280;
-        }
-        .scrollbar-thin::-webkit-scrollbar { 
-          height: 6px; 
-        }
-        .scrollbar-thumb-red-600::-webkit-scrollbar-thumb { 
-          background: #dc2626; 
-          border-radius: 3px; 
-        }
-        .scrollbar-track-gray-900::-webkit-scrollbar-track { 
-          background: #1a1a1a; 
-        }
-        .custom-scrollbar::-webkit-scrollbar { 
-          width: 8px; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-track { 
-          background: #f3f4f6; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-          background: #d1d5db; 
-          border-radius: 4px; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-          background: #9ca3af; 
-        }
+        .text-glow { text-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
+        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-position: right 1rem center; background-repeat: no-repeat; background-size: 1.25rem; appearance: none; }
       `}</style>
     </div>
   );
