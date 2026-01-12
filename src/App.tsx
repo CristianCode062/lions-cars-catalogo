@@ -109,17 +109,9 @@ const stockInicial: Vehiculo[] = [
     obs: "Potencia americana pura. Suspensión rancho de fábrica. Pisaderas eléctricas.",
     imagenes: createImageArray("PEUGEOT-208", 7)
   },
+  
   {
-    id: 8, marca: "BMW", modelo: "Serie 3", version: "Progressive",
-    ano: 2014, precio: 24900000, km: 38000, duenos: 1, traccion: "Delantera",
-    transmision: "Automática 7G-DCT", cilindrada: "1.3L Turbo", combustible: "Gasolina",
-    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 8000000,
-    aire: true, neumaticos: "Originales", llaves: 2,
-    obs: "Elegancia y tecnología. Sistema MBUX con comando de voz. Estado inmaculado.",
-    imagenes: createImageArray("BMW", 8)
-  },
-  {
-    id: 9, marca: "TOYOTA-HILUX- 4X4", modelo: "Frontier", version: "GT AWD",
+    id: 8, marca: "TOYOTA-HILUX- 4X4", modelo: "Frontier", version: "GT AWD",
     ano: 2022, precio: 9490000, km: 25000, duenos: 1, traccion: "AWD",
     transmision: "Automática 6V", cilindrada: "2.5L Skyactiv", combustible: "Gasolina",
     tipoVenta: "Consignado", vendedor: "Roberto Diaz", financiable: true, valorPie: 9000000,
@@ -127,33 +119,8 @@ const stockInicial: Vehiculo[] = [
     obs: "SUV familiar seguro y confiable. Audio Bose, Head-up display y cuero nappa.",
     imagenes: createImageArray("TOYOTA-HILUX- 4X4", 7)
   },
-  {
-    id: 10, marca: "VOLKSWAGEN-SAVEIRO", modelo: "Discovery", version: "Limited EyeSight",
-    ano: 2023, precio: 13990000, km: 12000, duenos: 1, traccion: "Symmetrical AWD",
-    transmision: "CVT Lineartronic", cilindrada: "2.5L Boxer", combustible: "Gasolina",
-    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 9500000,
-    aire: true, neumaticos: "Nuevos", llaves: 2,
-    obs: "Prácticamente nuevo. El mejor sistema de seguridad del mercado. Techo panorámico.",
-    imagenes: createImageArray("VOLKSWAGEN-SAVEIRO", 8)
-  },
-  {
-    id: 11, marca: "Audi", modelo: "Q3", version: "Limited",
-    ano: 2023, precio: 11990000, km: 12000, duenos: 1, traccion: "AWD",
-    transmision: "CVT", cilindrada: "2.5L", combustible: "Gasolina",
-    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 9500000,
-    aire: true, neumaticos: "Nuevos", llaves: 2,
-    obs: "Prácticamente nuevo. Sistema de seguridad avanzado. Techo panorámico.",
-    imagenes: createImageArray("2013-Audi-q3", 7)
-  },
-  {
-    id: 12, marca: "Ford", modelo: "Ranger", version: "Limited",
-    ano: 2023, precio: 28990000, km: 12000, duenos: 1, traccion: "4x4",
-    transmision: "Automática", cilindrada: "2.5L", combustible: "Gasolina",
-    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 9500000,
-    aire: true, neumaticos: "Nuevos", llaves: 2,
-    obs: "Prácticamente nuevo. El mejor sistema de seguridad. Techo panorámico gigante.",
-    imagenes: createImageArray("2024-Ford-ranger", 8)
-  },
+  
+  
 ];
 
 
