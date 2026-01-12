@@ -329,8 +329,78 @@ const CarCard = ({ car, onClick, isFavorite, onToggleFavorite }: {
   );
 };
 
+const ImageZoomModal = ({ 
+  image, 
+  onClose, 
+  onNext, 
+  onPrev,
+  currentIndex,
+  totalImages 
+}: { 
+  image: string; 
+  onClose: () => void; 
+  onNext: () => void;
+  onPrev: () => void;
+  currentIndex: number;
+  totalImages: number;
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-[110] bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all backdrop-blur-md border border-white/20 shadow-2xl"
+      >
+        <X size={24} />
+      </button>
+
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 shadow-lg">
+        <span className="text-sm font-bold">{currentIndex + 1} / {totalImages}</span>
+      </div>
+
+      <motion.img
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.8, opacity: 0 }}
+        transition={{ type: "spring", duration: 0.4 }}
+        src={image}
+        alt="Zoom"
+        className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {totalImages > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); onPrev(); }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-4 rounded-full backdrop-blur-md transition-all border border-white/20 shadow-2xl"
+          >
+            <ChevronLeft size={32} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onNext(); }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-4 rounded-full backdrop-blur-md transition-all border border-white/20 shadow-2xl"
+          >
+            <ChevronRight size={32} />
+          </button>
+        </>
+      )}
+
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 shadow-lg">
+        <p className="text-xs font-medium">Click fuera para cerrar • Usa las flechas para navegar</p>
+      </div>
+    </motion.div>
+  );
+};
+
 const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => void; onContact: (c: Vehiculo) => void }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImageZoom, setShowImageZoom] = useState(false);
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % car.imagenes.length);
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + car.imagenes.length) % car.imagenes.length);
@@ -371,7 +441,8 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.3 }}
                 alt={car.modelo}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover cursor-zoom-in"
+                onClick={(e) => { e.stopPropagation(); setShowImageZoom(true); }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800";
                 }}
@@ -424,6 +495,7 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
                   whileHover={{ y: -4 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setCurrentImageIndex(idx)}
+                  onDoubleClick={() => { setCurrentImageIndex(idx); setShowImageZoom(true); }}
                   className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all group ${currentImageIndex === idx
                       ? 'border-red-600 shadow-lg shadow-red-500/30'
                       : 'border-gray-700 hover:border-gray-500'
@@ -536,6 +608,18 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
             </p>
           </div>
         </div>
+        <AnimatePresence>
+        {showImageZoom && (
+          <ImageZoomModal
+            image={car.imagenes[currentImageIndex]}
+            currentIndex={currentImageIndex}
+            totalImages={car.imagenes.length}
+            onClose={() => setShowImageZoom(false)}
+            onNext={() => setCurrentImageIndex((prev) => (prev + 1) % car.imagenes.length)}
+            onPrev={() => setCurrentImageIndex((prev) => (prev - 1 + car.imagenes.length) % car.imagenes.length)}
+          />
+        )}
+      </AnimatePresence>
       </motion.div>
     </div>
   );
@@ -560,6 +644,7 @@ const DetailItem = ({ icon: Icon, label, value, highlight = false }: {
 
 
 // HERO VISUAL: Banner animado con imágenes destacadas
+
 
 function App() {
   const [stock, setStock] = useState<Vehiculo[]>(() => loadStockFromLocalStorage());
@@ -824,23 +909,14 @@ function App() {
               className="mb-12"
             >
               <motion.div
-                className="mb-12 relative flex justify-center items-center overflow-hidden rounded-2xl bg-black"
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                whileHover={{ scale: 1.02, y: -5 }}
-              >
+  className="mb-12 relative flex justify-center items-center overflow-hidden rounded-2xl bg-black h-[600px] md:h-[600px] lg:h-[300px]"
+  initial={{ scale: 0.8, opacity: 0, y: 20 }}
+  animate={{ scale: 1, opacity: 1, y: 0 }}
+  transition={{ duration: 0.8, ease: "easeOut" }}
+  whileHover={{ scale: 1.02, y: -5 }}
+>
                 {/* Video de fondo */}
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-cover  "
-                >
-                  <source src="/logos/autoefec.mp4" type="video/mp4" />
-                </video>
-
+               
 
 
                 {/* Sombras múltiples animadas */}
@@ -870,31 +946,7 @@ function App() {
                   }}
                 />
 
-                {/* Logo con animación de flotación - AUMENTADO DE TAMAÑO */}
-                <motion.img
-                  src="/logos/autoefec.png"
-                  alt="Autoefec"
-                  className="h-64 md:h-80 lg:h-96 w-auto relative z-10"
-                  style={{
-                    filter: 'drop-shadow(0 25px 50px rgba(220, 38, 38, 0.3)) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))'
-                  }}
-                  animate={{
-                    y: [0, -10, 0],
-                    filter: [
-                      'drop-shadow(0 25px 50px rgba(220, 38, 38, 0.3)) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))',
-                      'drop-shadow(0 30px 60px rgba(220, 38, 38, 0.4)) drop-shadow(0 15px 30px rgba(0, 0, 0, 0.2))',
-                      'drop-shadow(0 25px 50px rgba(220, 38, 38, 0.3)) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))'
-                    ]
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='200' viewBox='0 0 500 200'%3E%3Ctext x='30' y='140' font-size='110' fill='%23dc2626' font-weight='bold' font-style='italic'%3EAutoefec%3C/text%3E%3C/svg%3E";
-                  }}
-                />
+                
 
                 {/* Anillos de luz animados */}
                 <motion.div
