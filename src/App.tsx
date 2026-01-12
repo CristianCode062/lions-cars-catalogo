@@ -44,6 +44,12 @@ interface Vehiculo {
   precioHistorial?: { date: string; price: number; }[];
 }
 
+interface CarCardProps {
+  car: Vehiculo;
+  onClick: (c: Vehiculo) => void;
+  isFavorite: boolean;
+  onToggleFavorite: (e: React.MouseEvent, id: number) => void;
+}
 
 const stockInicial: Vehiculo[] = [
   {
@@ -109,7 +115,7 @@ const stockInicial: Vehiculo[] = [
     obs: "Potencia americana pura. Suspensión rancho de fábrica. Pisaderas eléctricas.",
     imagenes: createImageArray("PEUGEOT-208", 7)
   },
-  
+
   {
     id: 8, marca: "TOYOTA-HILUX- 4X4", modelo: "Frontier", version: "GT AWD",
     ano: 2022, precio: 9490000, km: 25000, duenos: 1, traccion: "AWD",
@@ -119,8 +125,8 @@ const stockInicial: Vehiculo[] = [
     obs: "SUV familiar seguro y confiable. Audio Bose, Head-up display y cuero nappa.",
     imagenes: createImageArray("TOYOTA-HILUX- 4X4", 7)
   },
-  
-  
+
+
 ];
 
 
@@ -207,37 +213,63 @@ const AutoCarousel = ({ images, interval = 3000 }: { images: string[], interval?
   );
 };
 
-const CarCard = ({ car, onClick, isFavorite, onToggleFavorite }: {
-  car: Vehiculo;
-  onClick: (c: Vehiculo) => void;
-  isFavorite: boolean;
-  onToggleFavorite: (e: React.MouseEvent, id: number) => void;
-}) => {
+
+const CarCard = ({ car, onClick, isFavorite, onToggleFavorite }: CarCardProps) => {
+  // 1. VALIDACIÓN DE SEGURIDAD (Evita errores de carga)
+  if (!car) return null;
+
+  // Logs originales
   console.log(`🎴 Card ${car.marca} ${car.modelo} - Imágenes:`, car.imagenes?.length || 0, car.imagenes);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      maximumFractionDigits: 0
+    }).format(price || 0);
+  };
+
   return (
     <motion.div
-      whileHover={{ y: -5, scale: 1.02 }}
+      whileHover={{ y: -8, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      onClick={() => onClick(car)}
-      className="group bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:border-red-600/50 hover:shadow-2xl hover:shadow-red-900/10 flex flex-col h-full relative"
+      onClick={() => {
+        if (onClick) onClick(car);
+      }}
+      className="group bg-[#121212] border border-white/5 rounded-[24px] overflow-hidden cursor-pointer hover:border-red-600/40 hover:shadow-[0_20px_40px_rgba(220,38,38,0.15)] flex flex-col h-full relative transition-all duration-300"
     >
-      <div className="absolute top-3 left-3 z-10">
-        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg backdrop-blur-md ${car.tipoVenta === 'Propio'
-            ? 'bg-red-600 text-white border border-red-500'
-            : 'bg-gray-800 text-white border border-gray-700'
+      {/* BADGE TIPO VENTA Y ESTADO */}
+      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+        <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl backdrop-blur-md border ${
+          car.tipoVenta === 'Propio'
+            ? 'bg-red-600 text-white border-red-500/50'
+            : 'bg-zinc-800 text-zinc-100 border-white/10'
           }`}>
           {car.tipoVenta}
         </span>
+        {car.estado && car.estado !== 'Disponible' && (
+          <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-600 text-white border border-orange-500/50 backdrop-blur-md">
+            {car.estado}
+          </span>
+        )}
       </div>
 
+      {/* BOTÓN FAVORITO */}
       <button
-        onClick={(e) => onToggleFavorite(e, car.id)}
-        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/90 hover:bg-white backdrop-blur-md text-gray-800 transition-colors shadow-lg"
+        onClick={(e: React.MouseEvent) => {
+          e.stopPropagation(); 
+          if (onToggleFavorite) onToggleFavorite(e, car.id);
+        }}
+        className="absolute top-3 right-3 z-30 p-2.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-md text-white transition-all border border-white/10 shadow-lg"
       >
-        <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"} />
+        <Heart 
+          size={18} 
+          className={isFavorite ? "fill-red-500 text-red-500" : "text-gray-300"} 
+        />
       </button>
 
-      <div className="relative h-56 overflow-hidden bg-gray-100">
+      {/* CONTENEDOR DE IMAGEN / CAROUSEL */}
+      <div className="relative h-60 overflow-hidden bg-zinc-900">
         <AutoCarousel
           images={(() => {
             const imgs = Array.isArray(car.imagenes) && car.imagenes.length > 0
@@ -247,65 +279,99 @@ const CarCard = ({ car, onClick, isFavorite, onToggleFavorite }: {
             return imgs;
           })()}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-80" />
+        
+        {/* Gradiente sutil para legibilidad del precio */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-90" />
 
-        <div className="absolute bottom-4 left-4">
-          <p className="text-red-500 text-xs font-bold uppercase tracking-wider mb-0.5">{car.marca}</p>
-          <p className="text-white font-bold text-2xl drop-shadow-lg tracking-tight">{formatPrice(car.precio)}</p>
+        <div className="absolute bottom-4 left-5">
+          <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 drop-shadow-md">
+            {car.marca}
+          </p>
+          <p className="text-white font-bold text-2xl drop-shadow-2xl tracking-tight">
+            {formatPrice(car.precio)}
+          </p>
+          {car.financiable && (
+            <p className="text-zinc-400 text-[10px] mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              Pie: {formatPrice(car.valorPie)}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="p-5 flex flex-col flex-grow bg-white">
-        <div className="mb-4">
-          <h3 className="text-gray-900 font-bold text-lg leading-tight group-hover:text-red-600 transition-colors">{car.modelo}</h3>
-          <p className="text-gray-600 text-sm font-medium">{car.version}</p>
+      {/* CUERPO DE LA CARD */}
+      <div className="p-6 flex flex-col flex-grow bg-gradient-to-b from-[#121212] to-[#0a0a0a]">
+        <div className="mb-5">
+          <h3 className="text-zinc-100 font-bold text-xl leading-tight group-hover:text-red-500 transition-colors">
+            {car.modelo}
+          </h3>
+          <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1 opacity-70">
+            {car.version}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-y-3 text-xs text-gray-600 mb-5">
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-red-600" />
-            <span>{car.ano}</span>
+        {/* GRID DE ESPECIFICACIONES */}
+        <div className="grid grid-cols-2 gap-y-4 text-[13px] text-zinc-400 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Calendar size={14} />
+            </div>
+            <span className="font-semibold">{car.ano}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Gauge size={14} className="text-red-600" />
-            <span>{car.km.toLocaleString()} km</span>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Gauge size={14} />
+            </div>
+            <span className="font-semibold">{car.km.toLocaleString()} km</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Fuel size={14} className="text-red-600" />
-            <span>{car.combustible}</span>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Fuel size={14} />
+            </div>
+            <span className="font-semibold">{car.combustible}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Settings2 size={14} className="text-red-600" />
-            <span>{car.transmision}</span>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Settings2 size={14} />
+            </div>
+            <span className="font-semibold truncate">{car.transmision}</span>
           </div>
         </div>
 
-        <div className="mt-auto pt-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-red-600 font-bold border border-gray-200">
+        {/* FOOTER */}
+        <div className="mt-auto pt-5 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-xs text-zinc-400">
+            <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center text-red-500 font-black border border-white/10 shadow-inner">
               {car.vendedor.charAt(0)}
             </div>
-            {car.vendedor.split(' ')[0]}
+            <div className="flex flex-col">
+              <span className="text-[9px] uppercase font-bold text-zinc-600">Vendedor</span>
+              <span className="text-zinc-300 font-bold leading-none">{car.vendedor.split(' ')[0]}</span>
+            </div>
           </div>
-          <span className="text-red-600 text-xs font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform bg-red-50 px-2 py-1 rounded">
-            Ver Ficha <ChevronRight size={14} />
+          
+          <span className="text-red-500 text-[11px] font-black uppercase flex items-center gap-1.5 group-hover:translate-x-1 transition-transform bg-red-500/10 px-3 py-2 rounded-xl border border-red-500/20">
+            Ficha <ChevronRight size={14} />
           </span>
         </div>
       </div>
+
+      {/* Borde de brillo sutil en hover */}
+      <div className="absolute inset-0 pointer-events-none rounded-[24px] border border-white/0 group-hover:border-red-600/20 transition-all duration-500" />
     </motion.div>
   );
 };
 
-const ImageZoomModal = ({ 
-  image, 
-  onClose, 
-  onNext, 
+const ImageZoomModal = ({
+  image,
+  onClose,
+  onNext,
   onPrev,
   currentIndex,
-  totalImages 
-}: { 
-  image: string; 
-  onClose: () => void; 
+  totalImages
+}: {
+  image: string;
+  onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
   currentIndex: number;
@@ -464,8 +530,8 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
                   onClick={() => setCurrentImageIndex(idx)}
                   onDoubleClick={() => { setCurrentImageIndex(idx); setShowImageZoom(true); }}
                   className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all group ${currentImageIndex === idx
-                      ? 'border-red-600 shadow-lg shadow-red-500/30'
-                      : 'border-gray-700 hover:border-gray-500'
+                    ? 'border-red-600 shadow-lg shadow-red-500/30'
+                    : 'border-gray-700 hover:border-gray-500'
                     }`}
                 >
                   <img
@@ -523,7 +589,7 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
           </div>
         </div>
 
-        <div className="md:w-7/12 p-6 md:p-10 overflow-y-auto bg-white">
+        <div className="md:w-7/12 p-6 md:p-10 overflow-y-auto bg-white">  
           <div className="mb-8 flex items-center justify-between pb-4 border-b border-gray-200">
             <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
               <Info className="text-red-600" size={24} />
@@ -576,17 +642,17 @@ const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => v
           </div>
         </div>
         <AnimatePresence>
-        {showImageZoom && (
-          <ImageZoomModal
-            image={car.imagenes[currentImageIndex]}
-            currentIndex={currentImageIndex}
-            totalImages={car.imagenes.length}
-            onClose={() => setShowImageZoom(false)}
-            onNext={() => setCurrentImageIndex((prev) => (prev + 1) % car.imagenes.length)}
-            onPrev={() => setCurrentImageIndex((prev) => (prev - 1 + car.imagenes.length) % car.imagenes.length)}
-          />
-        )}
-      </AnimatePresence>
+          {showImageZoom && (
+            <ImageZoomModal
+              image={car.imagenes[currentImageIndex]}
+              currentIndex={currentImageIndex}
+              totalImages={car.imagenes.length}
+              onClose={() => setShowImageZoom(false)}
+              onNext={() => setCurrentImageIndex((prev) => (prev + 1) % car.imagenes.length)}
+              onPrev={() => setCurrentImageIndex((prev) => (prev - 1 + car.imagenes.length) % car.imagenes.length)}
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
@@ -609,84 +675,6 @@ const DetailItem = ({ icon: Icon, label, value, highlight = false }: {
   </div>
 );
 
-
-// HERO VISUAL: Banner animado con imágenes destacadas
-{/* SECCIÓN HERO / BANNER PRINCIPAL CON TU IMAGEN DSC06884.JPG */}
-<motion.div
-  initial={{ opacity: 0, y: 30 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.6 }}
-  className="mb-12"
->
-  <motion.div
-    className="relative flex justify-center items-center overflow-hidden rounded-3xl bg-black h-[400px] md:h-[500px] border border-gray-800 shadow-2xl shadow-red-900/10"
-    initial={{ scale: 0.95, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1 }}
-    transition={{ duration: 0.8, ease: "easeOut" }}
-    whileHover={{ scale: 1.01 }}
-  >
-    {/* 1. Fondo con tu Imagen DSC06884.JPG */}
-    <div className="absolute inset-0 z-0">
-      <img
-        src="/DSC06884.JPG" 
-        alt="Autoefec Hero"
-        className="w-full h-full object-cover opacity-70 scale-105"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80"; // Imagen de respaldo si no carga
-        }}
-      />
-      {/* Overlay gradiente para fundir la imagen con el negro del fondo */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent"></div>
-    </div>
-
-    {/* 2. Sombras y Brillos Ambientales Animados (Tonos Rojos) */}
-    <motion.div
-      className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-red-900/30 blur-[100px] pointer-events-none"
-      animate={{
-        scale: [1, 1.2, 1],
-        opacity: [0.3, 0.5, 0.3],
-      }}
-      transition={{
-        duration: 5,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-    />
-
-    {/* 3. Contenido Central (Texto Principal) */}
-    <div className="relative z-10 flex flex-col items-center text-center px-4">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white mb-2 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
-          AUTO<span className="text-red-600">EFEC</span>
-        </h1>
-        <div className="h-1 w-24 bg-red-600 mx-auto mb-4 rounded-full"></div>
-        <p className="text-gray-200 text-sm md:text-base tracking-[0.4em] uppercase font-bold drop-shadow-md">
-          Tu Auto Ideal
-        </p>
-      </motion.div>
-
-      {/* 4. Anillos de luz decorativos sobre la imagen */}
-      <motion.div
-        className="absolute w-[350px] h-[350px] rounded-full border border-red-500/20 pointer-events-none"
-        animate={{
-          scale: [0.8, 1.5],
-          opacity: [0.5, 0],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeOut",
-        }}
-      />
-    </div>
-  </motion.div>
-</motion.div>
-
 function App() {
   const [stock, setStock] = useState<Vehiculo[]>(() => loadStockFromLocalStorage());
   const [selectedSeller, setSelectedSeller] = useState('Todos');
@@ -695,7 +683,6 @@ function App() {
   const [selectedCar, setSelectedCar] = useState<Vehiculo | null>(null);
   const [notification, setNotification] = useState<{ message: string; sub: string } | null>(null);
   // Eliminada lógica de edición/eliminación de autos
-  const [showFilters, setShowFilters] = useState(false);
   const [currentView, setCurrentView] = useState<'catalog' | 'seller'>('catalog');
 
   const [filters, setFilters] = useState({
@@ -704,12 +691,16 @@ function App() {
     yearMax: '',
     priceMin: '',
     priceMax: '',
+    kmMin: '',
     kmMax: '',
     combustible: 'Todos',
     transmision: 'Todas',
     traccion: 'Todas',
     tipoVenta: 'Todos',
-    financiable: 'Todos'
+    financiable: 'Todos',
+    duenosMax: '',
+    aire: 'Todos',
+    neumaticos: 'Todos'
   });
 
   // Actualizar stock al agregar auto desde SellerPortal
@@ -755,8 +746,7 @@ function App() {
 
   const sellers = useMemo(() => ['Todos', ...Array.from(new Set(stock.map(c => c.vendedor)))], [stock]);
   const marcas = useMemo(() => ['Todas', ...Array.from(new Set(stock.map(c => c.marca))).sort()], [stock]);
-  const combustibles = useMemo(() => ['Todos', ...Array.from(new Set(stock.map(c => c.combustible)))], [stock]);
-  const tracciones = useMemo(() => ['Todas', ...Array.from(new Set(stock.map(c => c.traccion)))], [stock]);
+
 
   const filteredStock = useMemo(() => {
     return stock.filter(car => {
@@ -766,24 +756,30 @@ function App() {
       const matchSearch =
         car.marca.toLowerCase().includes(searchLower) ||
         car.modelo.toLowerCase().includes(searchLower) ||
-        car.ano.toString().includes(searchLower);
+        car.ano.toString().includes(searchLower) ||
+        car.version.toLowerCase().includes(searchLower);
 
       const matchMarca = filters.marca === 'Todas' || car.marca === filters.marca;
       const matchYearMin = !filters.yearMin || car.ano >= parseInt(filters.yearMin);
       const matchYearMax = !filters.yearMax || car.ano <= parseInt(filters.yearMax);
       const matchPriceMin = !filters.priceMin || car.precio >= parseInt(filters.priceMin);
       const matchPriceMax = !filters.priceMax || car.precio <= parseInt(filters.priceMax);
-      const matchKm = !filters.kmMax || car.km <= parseInt(filters.kmMax);
+      const matchKmMin = !filters.kmMin || car.km >= parseInt(filters.kmMin);
+      const matchKmMax = !filters.kmMax || car.km <= parseInt(filters.kmMax);
       const matchCombustible = filters.combustible === 'Todos' || car.combustible === filters.combustible;
       const matchTransmision = filters.transmision === 'Todas' || car.transmision.includes(filters.transmision);
       const matchTraccion = filters.traccion === 'Todas' || car.traccion === filters.traccion;
       const matchTipoVenta = filters.tipoVenta === 'Todos' || car.tipoVenta === filters.tipoVenta;
       const matchFinanciable = filters.financiable === 'Todos' ||
         (filters.financiable === 'Si' ? car.financiable : !car.financiable);
+      const matchDuenos = !filters.duenosMax || car.duenos <= parseInt(filters.duenosMax);
+      const matchAire = filters.aire === 'Todos' || (filters.aire === 'Si' ? car.aire : !car.aire);
+      const matchNeumaticos = filters.neumaticos === 'Todos' || car.neumaticos === filters.neumaticos;
 
       return matchSeller && matchSearch && matchMarca && matchYearMin && matchYearMax &&
-        matchPriceMin && matchPriceMax && matchKm && matchCombustible &&
-        matchTransmision && matchTraccion && matchTipoVenta && matchFinanciable;
+        matchPriceMin && matchPriceMax && matchKmMin && matchKmMax && matchCombustible &&
+        matchTransmision && matchTraccion && matchTipoVenta && matchFinanciable &&
+        matchDuenos && matchAire && matchNeumaticos;
     });
   }, [stock, selectedSeller, searchTerm, filters]);
 
@@ -814,32 +810,20 @@ function App() {
       yearMax: '',
       priceMin: '',
       priceMax: '',
+      kmMin: '',
       kmMax: '',
       combustible: 'Todos',
       transmision: 'Todas',
       traccion: 'Todas',
       tipoVenta: 'Todos',
-      financiable: 'Todos'
+      financiable: 'Todos',
+      duenosMax: '',
+      aire: 'Todos',
+      neumaticos: 'Todos'
     });
     setSearchTerm('');
     setSelectedSeller('Todos');
   };
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.marca !== 'Todas') count++;
-    if (filters.yearMin || filters.yearMax) count++;
-    if (filters.priceMin || filters.priceMax) count++;
-    if (filters.kmMax) count++;
-    if (filters.combustible !== 'Todos') count++;
-    if (filters.transmision !== 'Todas') count++;
-    if (filters.traccion !== 'Todas') count++;
-    if (filters.tipoVenta !== 'Todos') count++;
-    if (filters.financiable !== 'Todos') count++;
-    if (searchTerm) count++;
-    if (selectedSeller !== 'Todos') count++;
-    return count;
-  }, [filters, searchTerm, selectedSeller]);
 
 
 
@@ -851,9 +835,50 @@ function App() {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-gray-800/50"
+          className="sticky top-0 z-50 bg-black/95 backdrop-blur-2xl border-b border-gray-800/50"
         >
-          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          {/* Barra superior con contactos */}
+          <div className="w-full bg-gray-900/50 border-b border-gray-800/30">
+            <div className="w-full px-6 py-2">
+              <div className="flex items-center justify-between text-xs">
+                {/* Dirección */}
+                <div className="hidden lg:flex items-center gap-2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span>Av. Principal #123, Concepción, Chile</span>
+                </div>
+
+                {/* WhatsApp en 2 filas */}
+                <div className="flex items-center gap-3 ml-auto">
+                  <div className="flex flex-col gap-1">
+                    <a href="https://wa.me/56912345678" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 1234 5678</span>
+                    </a>
+                    <a href="https://wa.me/56987654321" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 8765 4321</span>
+                    </a>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <a href="https://wa.me/56911223344" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 1122 3344</span>
+                    </a>
+                    <a href="https://wa.me/56955667788" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 5566 7788</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra principal */}
+          <div className="w-full px-6 h-20 flex items-center justify-between">
             <motion.div
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => setCurrentView('catalog')}
@@ -878,11 +903,10 @@ function App() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentView(currentView === 'catalog' ? 'seller' : 'catalog')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${
-                  currentView === 'catalog'
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${currentView === 'catalog'
                     ? 'bg-white text-black hover:bg-red-600 hover:text-white'
                     : 'bg-gray-800 text-red-400 border border-red-900/50'
-                }`}
+                  }`}
               >
                 {currentView === 'catalog' ? (
                   <>
@@ -900,174 +924,342 @@ function App() {
           </div>
         </motion.header>
 
-        {/* ================= SECCIÓN HERO (Solo en Catálogo) ================= */}
-        {currentView === 'catalog' && (
-          <>
-            <div className="relative h-[500px] md:h-[650px] w-full overflow-hidden flex items-center justify-center">
-              {/* Imagen de Fondo con Zoom Inercial */}
-              <motion.div 
-                className="absolute inset-0 z-0"
-                initial={{ scale: 1.15 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 2, ease: "easeOut" }}
-              >
-                <img
-                  src="/DSC06884.JPG" 
-                  className="w-full h-full object-cover opacity-70"
-                  alt="Background"
-                />
-                {/* Capas de Profundidad */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black opacity-80" />
-              </motion.div>
+        {/* Hero Section - Reducido para dar paso al catálogo rápido */}
+        {/* Hero Section - Con slogan */}
+{currentView === 'catalog' && (
+  <div className="relative h-[350px] w-full overflow-hidden flex items-center justify-center">
+    <motion.div 
+      className="absolute inset-0 z-0"
+      initial={{ scale: 1.1 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 1.5 }}
+    >
+      <img src="/DSC06884.JPG" className="w-full h-full object-cover opacity-40" alt="Background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/60 to-black" />
+    </motion.div>
+    
+    <div className="relative z-10 text-center px-4 max-w-4xl">
+      <motion.div
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.8 }}
+      >
+        <h1 className="text-6xl md:text-8xl font-black italic text-white tracking-tighter mb-4 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
+          AUTO<span className="text-red-600 text-glow">EFEC</span>
+        </h1>
+        <div className="h-1 w-32 bg-red-600 mx-auto mb-6 rounded-full"></div>
+        
+        <motion.p 
+          className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-lg"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.8 }}
+        >
+          Tu Auto Ideal Te Está Esperando
+        </motion.p>
+        
+        <motion.p 
+          className="text-gray-300 text-base md:text-lg font-medium drop-shadow-md max-w-2xl mx-auto"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.8 }}
+        >
+          Vehículos seleccionados con garantía y financiamiento disponible. 
+          <span className="text-red-500 font-bold"> Más de 15 años</span> conectando familias con su auto perfecto.
+        </motion.p>
 
-              {/* Contenido Hero */}
-              <div className="relative z-10 text-center px-4">
-                <motion.div
-                  initial={{ y: 50, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 1 }}
-                >
-                  <h1 className="text-6xl md:text-[9rem] font-black italic tracking-tighter text-white leading-none drop-shadow-2xl">
-                    AUTO<span className="text-red-600 text-glow">EFEC</span>
-                  </h1>
-                  <p className="text-gray-400 text-xs md:text-xl uppercase tracking-[0.5em] mt-4 font-light">
-                    La excelencia automotriz a tu alcance
-                  </p>
-                </motion.div>
-              </div>
-            </div>
+        <motion.div 
+          className="flex items-center justify-center gap-4 mt-6 flex-wrap"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.8 }}
+        >
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full">
+            <p className="text-xs font-bold text-white">✓ Garantía Incluida</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full">
+            <p className="text-xs font-bold text-white">✓ Financiamiento Fácil</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full">
+            <p className="text-xs font-bold text-white">✓ Revisión Técnica</p>
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
 
-            {/* BARRA DE BÚSQUEDA FLOTANTE */}
-            <div className="max-w-5xl mx-auto px-4 -mt-16 relative z-30">
-              <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="bg-gray-900/90 backdrop-blur-2xl border border-gray-800 p-3 md:p-4 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row gap-3"
-              >
-                <div className="flex-grow relative group">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" size={22} />
-                  <input
-                    type="text"
-                    placeholder="Busca tu próximo auto..."
-                    className="w-full bg-gray-800/50 border-none rounded-3xl py-5 pl-14 pr-6 text-white focus:ring-2 focus:ring-red-600/20 transition-all placeholder:text-gray-500 font-medium"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`px-8 rounded-3xl flex items-center gap-2 font-bold transition-all ${showFilters ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
-                  >
-                    <Filter size={20} />
-                    <span>Filtros</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Panel de Filtros Animado */}
-              <AnimatePresence>
-                {showFilters && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 10 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="bg-gray-900 border border-gray-800 rounded-3xl p-8 mt-4 shadow-2xl"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                       {/* Selector de Vendedor */}
-                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Vendedor</label>
-                        <select 
-                          value={selectedSeller}
-                          onChange={(e) => setSelectedSeller(e.target.value)}
-                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 text-sm text-white focus:border-red-600 transition-all"
-                        >
-                          {sellers.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-                      
-                      {/* Filtro Marca */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Marca</label>
-                        <select 
-                          value={filters.marca}
-                          onChange={(e) => setFilters({...filters, marca: e.target.value})}
-                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 text-sm text-white focus:border-red-600 transition-all"
-                        >
-                          {marcas.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                      </div>
-
-                      {/* Filtro Año */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Año Máximo</label>
-                        <input 
-                          type="number"
-                          placeholder="2024"
-                          className="w-full bg-gray-800 border-gray-700 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-red-600"
-                          onChange={(e) => setFilters({...filters, yearMax: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="mt-8 flex justify-between items-center">
-                        <button onClick={clearAllFilters} className="text-gray-500 hover:text-red-500 text-sm font-bold transition-colors underline underline-offset-4">Limpiar filtros</button>
-                        <button onClick={() => setShowFilters(false)} className="bg-white text-black px-8 py-3 rounded-xl font-black text-sm hover:bg-red-600 hover:text-white transition-all">Ver Resultados ({filteredStock.length})</button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </>
-        )}
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-red-900/20 blur-[120px] pointer-events-none"
+      animate={{
+        scale: [1, 1.2, 1],
+        opacity: [0.3, 0.5, 0.3],
+      }}
+      transition={{
+        duration: 5,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    />
+  </div>
+)}
       </div>
 
-      {/* Cuerpo Principal */}
-      <main className="max-w-7xl mx-auto px-6 pt-20 pb-20 relative z-10">
+      {/* CUERPO PRINCIPAL CON SIDEBAR */}
+      <main className="w-full px-6 pb-20">
         <AnimatePresence mode="wait">
           {currentView === 'catalog' ? (
-            <motion.div
-              key="catalog"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {filteredStock.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {filteredStock.map((car, i) => (
-                    <motion.div
-                      key={car.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                    >
-                      <CarCard
-                        car={car}
-                        onClick={setSelectedCar}
-                        isFavorite={favorites.includes(car.id)}
-                        onToggleFavorite={toggleFavorite}
+            <div className="flex flex-col md:flex-row gap-8">
+
+              {/* COLUMNA IZQUIERDA: FILTROS FIJOS */}
+              <aside className="w-full md:w-[380px] lg:w-[420px] flex-shrink-0">
+                <div className="sticky top-24">
+                  <div className="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl">
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                      <Filter size={18} className="text-red-600" /> Filtros
+                    </h3>
+
+                    {/* Buscador dentro del Sidebar */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Buscar..."
+                        className="w-full bg-black border border-gray-800 rounded-xl py-2 pl-10 pr-3 text-sm focus:border-red-600 transition-all"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                       />
-                    </motion.div>
-                  ))}
+                    </div>
+
+                    {/* Filtros Compactos */}
+                    <div className="space-y-3">
+                      {/* Vendedor y Marca en una fila */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                          <select
+                            value={selectedSeller}
+                            onChange={(e) => setSelectedSeller(e.target.value)}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            {sellers.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Marca</label>
+                          <select
+                            value={filters.marca}
+                            onChange={(e) => setFilters({ ...filters, marca: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            {marcas.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Año */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Año</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Desde"
+                            value={filters.yearMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, yearMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Hasta"
+                            value={filters.yearMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, yearMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Precio */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Precio (M)</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={filters.priceMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max"
+                            value={filters.priceMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Kilometraje */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Km</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={filters.kmMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, kmMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max"
+                            value={filters.kmMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, kmMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Combustible y Transmisión */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Combustible</label>
+                          <select
+                            value={filters.combustible}
+                            onChange={(e) => setFilters({ ...filters, combustible: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            <option value="Todos">Todos</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Eléctrico">Eléctrico</option>
+                            <option value="Híbrido">Híbrido</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Transmisión</label>
+                          <select
+                            value={filters.transmision}
+                            onChange={(e) => setFilters({ ...filters, transmision: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            <option value="Todas">Todas</option>
+                            <option value="Automática">Auto</option>
+                            <option value="Mecánica">Manual</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Checkboxes compactos */}
+                      <div className="pt-2 border-t border-gray-800">
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Características</label>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Tracción 4x4 */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.traccion === '4x4'}
+                              onChange={(e) => setFilters({ ...filters, traccion: e.target.checked ? '4x4' : 'Todas' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">4x4</span>
+                          </label>
+
+                          {/* Aire */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.aire === 'Si'}
+                              onChange={(e) => setFilters({ ...filters, aire: e.target.checked ? 'Si' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">A/C</span>
+                          </label>
+
+                          {/* Financiable */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.financiable === 'Si'}
+                              onChange={(e) => setFilters({ ...filters, financiable: e.target.checked ? 'Si' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">Financ.</span>
+                          </label>
+
+                          {/* Propio */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.tipoVenta === 'Propio'}
+                              onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.checked ? 'Propio' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">Propio</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Botón Limpiar */}
+                      <button
+                        onClick={clearAllFilters}
+                        className="w-full mt-3 bg-red-600/10 hover:bg-red-600/20 border border-red-900/30 text-red-400 font-bold py-2 rounded-lg transition-all text-xs flex items-center justify-center gap-2"
+                      >
+                        <X size={14} />
+                        Limpiar Filtros
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-20 bg-gray-900/50 rounded-[3rem] border border-dashed border-gray-800">
-                  <Search size={48} className="mx-auto text-gray-700 mb-4" />
-                  <p className="text-xl font-bold text-gray-400">No hay vehículos que coincidan</p>
-                  <button onClick={clearAllFilters} className="mt-4 text-red-500 font-bold hover:underline">Restablecer búsqueda</button>
+              </aside>
+
+              {/* COLUMNA DERECHA: GRILLA DE AUTOS */}
+              <motion.div
+                key="catalog-list"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex-grow"
+              >
+                <div className="mb-6 flex justify-between items-end">
+                  <p className="text-gray-400 text-sm font-medium">
+                    Mostrando <span className="text-white font-bold">{filteredStock.length}</span> vehículos
+                  </p>
                 </div>
-              )}
-            </motion.div>
+
+                {filteredStock.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+                    {filteredStock.map((car, i) => (
+                      <motion.div
+                        key={car.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                      >
+                        <CarCard
+                          car={car}
+                          onClick={setSelectedCar}
+                          isFavorite={favorites.includes(car.id)}
+                          onToggleFavorite={toggleFavorite}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 bg-gray-900/30 rounded-[3rem] border border-dashed border-gray-800">
+                    <Search size={48} className="mx-auto text-gray-700 mb-4" />
+                    <p className="text-xl font-bold text-gray-400">No encontramos lo que buscas</p>
+                    <button onClick={clearAllFilters} className="mt-4 text-red-500 font-bold hover:underline">Ver todo el stock</button>
+                  </div>
+                )}
+              </motion.div>
+            </div>
           ) : (
+            /* VISTA PORTAL VENDEDOR (Ancho completo) */
             <motion.div
               key="seller"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
+              className="pt-10"
             >
               <SellerPortal
                 stock={stock}
@@ -1106,9 +1298,20 @@ function App() {
       </AnimatePresence>
 
       <style>{`
-        .text-glow { text-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
-        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-position: right 1rem center; background-repeat: no-repeat; background-size: 1.25rem; appearance: none; }
-      `}</style>
+      .text-glow { text-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
+      select { 
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); 
+        background-position: right 1rem center; 
+        background-repeat: no-repeat; 
+        background-size: 1.25rem; 
+        appearance: none; 
+      }
+      /* Custom scrollbar para el sidebar si es muy largo */
+     .sticky {
+  max-height: none;
+  overflow-y: visible;
+}
+    `}</style>
     </div>
   );
 }
