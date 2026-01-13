@@ -1,23 +1,28 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import type { MouseEvent } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
-  Car, PlusCircle, LogOut, Wallet, TrendingUp, Search, ArrowLeft,
-  Image as ImageIcon, Edit3, DollarSign, Trash2,
-  Zap, BarChart3, Clock, ShieldCheck, ChevronRight, ChevronLeft, ArrowUpRight,
-  ArrowDownRight, Bell, History, Target, Percent, Eye, Users, Award, Lock,
-  Activity, Package, AlertTriangle, LineChart, ImagePlus
+  Car, Calendar, Gauge, Fuel, Settings2, 
+   Search, X, MessageCircle, ChevronRight,
+   Filter, Heart, Share2, LayoutDashboard, ArrowLeft, 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
-// ===== INTERFACES =====
+// --- IMPORTACIÓN DEL COMPONENTE VENDEDOR ---
+import SellerPortal from './components/SellerPortal';
 
+// --- UTILIDADES Y TIPOS ---
+
+const createImageArray = (folder: string, count: number) => {
+  const normFolder = folder.toLowerCase().replace(/[^a-z0-9-_]/g, '').replace(/\s+/g, '-');
+  return Array.from({ length: count }, (_, i) => `/autoefec/${normFolder}/${i + 1}.jpg`);
+};
+
+// NUEVA INTERFAZ PARA LOS PUNTOS DE INTERÉS
 export interface Hotspot {
   id: string;
   x: number;
   y: number;
   label: string;
   detail: string;
-  imageIndex: number; // <--- NUEVO: Vincula el punto a una foto específica
 }
 
 export interface Vehiculo {
@@ -33,12 +38,6 @@ export interface Vehiculo {
   transmision: string;
   cilindrada: string;
   combustible: string;
-  carroceria: string;
-  puertas: number;
-  pasajeros: number;
-  motor: string;
-  techo: boolean;
-  asientos: string;
   tipoVenta: 'Propio' | 'Consignado';
   vendedor: string;
   financiable: boolean;
@@ -57,140 +56,180 @@ export interface Vehiculo {
   comisionEstimada?: number;
   precioHistorial?: { date: string; price: number; }[];
   imagen?: string;
-  hotspots?: Hotspot[];
+  hotspots?: Hotspot[]; // Campo nuevo para guardar los puntos
 }
 
-interface Notification {
-  id: number;
-  text: string;
-  type: 'price' | 'lead' | 'warning';
-  time: string;
+interface CarCardProps {
+  car: Vehiculo;
+  onClick: (c: Vehiculo) => void;
+  isFavorite: boolean;
+  onToggleFavorite: (e: React.MouseEvent, id: number) => void;
 }
 
-interface Stats {
-  totalValue: number;
-  avgDays: number;
-  leads: number;
-  count: number;
-  totalComission: number;
-  available: number;
-  sold: number;
-  totalViews: number;
-  avgPrice: number;
-  conversionRate: string;
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(price || 0);
+
+// --- DATOS INICIALES COMPLETOS ---
+
+const stockInicial: Vehiculo[] = [
+  {
+    id: 1, marca: "CITROEN", modelo: "BERLINGO", version: "",
+    ano: 2020, precio: 10990000, km: 140000, duenos: 1, traccion: "Delantera",
+    transmision: "Automática CVT", cilindrada: "1.0L Turbo", combustible: "Diesel",
+    tipoVenta: "Propio", vendedor: "Carlos Pérez", financiable: true, valorPie: 4000000,
+    aire: true, neumaticos: "Nuevos", llaves: 2,
+    obs: "Vehículo seminuevo, garantía de marca vigente",
+    imagenes: createImageArray("CITROEN-BERLINGO", 8)
+  },
+  {
+    id: 2, marca: "FORD", modelo: "F150", version: "5.0",
+    ano: 2024, precio: 44990000, km: 35000, duenos: 1, traccion: "4x4",
+    transmision: "Automática", cilindrada: "3.5L Twin-Turbo", combustible: "Gasolina",
+    tipoVenta: "Propio", vendedor: "Carlos Pérez", financiable: true, valorPie: 15000000,
+    aire: true, neumaticos: "Nuevos", llaves: 2,
+    obs: "Unidad en estado de vitrina.",
+    imagenes: createImageArray("FORD-F150", 9)
+  },
+  {
+    id: 3, marca: "HYUNDAI", modelo: "GRAND-I10-GLS", version: "1.2",
+    ano: 2018, precio: 6790000, km: 85000, duenos: 2, traccion: "",
+    transmision: "Mecánica 6V", cilindrada: "2.4L Diesel", combustible: "Diesel",
+    tipoVenta: "Consignado", vendedor: "María González", financiable: true, valorPie: 2000000,
+    aire: true, neumaticos: "Media vida", llaves: 1,
+    obs: "Mecánicamente impecable. Uso mayoritario en carretera. Ideal para trabajo pesado.",
+    imagenes: createImageArray("HYUNDAI -GRAND-I10-GLS", 8)
+  },
+  {
+    id: 4, marca: "HYUNDAI", modelo: "TUCSON", version: "M Sport",
+    ano: 2015, precio: 8900000, km: 41000, duenos: 1, traccion: "Trasera",
+    transmision: "Mecanica", cilindrada: "2.0L Turbo", combustible: "Gasolina",
+    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 20000000,
+    aire: true, neumaticos: "Buen estado", llaves: 2,
+    obs: "Solo uso fin de semana. Láminas certificadas. Garantía vigente. Paquete M completo.",
+    imagenes: createImageArray("HYUNDAI-TUCSON", 8)
+  },
+  {
+    id: 5, marca: "MAXUS", modelo: "T60", version: "2.8 turbo diesel",
+    ano: 2018, precio: 13900000, km: 44000, duenos: 2, traccion: "Delantera",
+    transmision: "Automática", cilindrada: "1.6L BlueHDi", combustible: "Diesel",
+    tipoVenta: "Consignado", vendedor: "Roberto Diaz", financiable: false, valorPie: 4000000,
+    aire: true, neumaticos: "Nuevos", llaves: 2,
+    obs: "Consignación virtual. El dueño lo muestra en su domicilio. Techo panorámico.",
+    imagenes: createImageArray("MAXUS-T60", 9)
+  },
+  {
+    id: 6, marca: "NISSAN", modelo: "NAVARA", version: "2.3",
+    ano: 2023, precio: 20990000, km: 55000, duenos: 3, traccion: "4x4",
+    transmision: "Automática", cilindrada: "3.6L V6", combustible: "Diesel",
+    tipoVenta: "Consignado", vendedor: "María González", financiable: true, valorPie: 12000000,
+    aire: true, neumaticos: "Off-road 35''", llaves: 1,
+    obs: "Equipamiento extra: Winche, suspensión elevada Fox, focos LED. Listo para aventura.",
+    imagenes: createImageArray("NISSAN-NAVARA", 8)
+  },
+  {
+    id: 7, marca: "PEUGEOT", modelo: "208", version: "Z71 Trail Boss",
+    ano: 2020, precio: 42500000, km: 45000, duenos: 1, traccion: "4x4",
+    transmision: "Automática 10V", cilindrada: "5.3L V8", combustible: "Gasolina",
+    tipoVenta: "Propio", vendedor: "Alex Hernandez", financiable: true, valorPie: 14000000,
+    aire: true, neumaticos: "Nuevos M/T", llaves: 2,
+    obs: "Potencia americana pura. Suspensión rancho de fábrica. Pisaderas eléctricas.",
+    imagenes: createImageArray("PEUGEOT-208", 7)
+  },
+  {
+    id: 8, marca: "TOYOTA-HILUX- 4X4", modelo: "Frontier", version: "GT AWD",
+    ano: 2022, precio: 9490000, km: 25000, duenos: 1, traccion: "AWD",
+    transmision: "Automática 6V", cilindrada: "2.5L Skyactiv", combustible: "Gasolina",
+    tipoVenta: "Consignado", vendedor: "Roberto Diaz", financiable: true, valorPie: 9000000,
+    aire: true, neumaticos: "Buen estado", llaves: 2,
+    obs: "SUV familiar seguro y confiable. Audio Bose, Head-up display y cuero nappa.",
+    imagenes: createImageArray("TOYOTA-HILUX- 4X4", 7)
+  },
+];
+
+// --- LOGICA DE PERSISTENCIA ---
+const LOCAL_STORAGE_KEY = 'autos_catalogo_stock';
+
+type VehiculoLegacy = Vehiculo & { imagen?: string };
+function loadStockFromLocalStorage(): Vehiculo[] {
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (data) {
+      const loaded: VehiculoLegacy[] = JSON.parse(data);
+      return loaded.map((car) => {
+        let imagenesArray = car.imagenes || [];
+        if (imagenesArray.length === 0 && car.imagen) {
+          imagenesArray = [car.imagen];
+        }
+        if (imagenesArray.length === 0) {
+          imagenesArray = ["https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"];
+        }
+        return {
+          ...car,
+          imagenes: imagenesArray,
+          hotspots: car.hotspots || []
+        };
+      });
+    }
+  } catch (e) {
+    console.error('Error cargando stock:', e);
+  }
+  return stockInicial;
 }
 
-interface SellerPortalProps {
-  stock: Vehiculo[];
-  onBack?: () => void;
-  onAdd: (car: Vehiculo) => void;
-  onUpdate: (car: Vehiculo) => void;
-  onDelete: (id: number) => void;
+function saveStockToLocalStorage(stock: Vehiculo[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stock));
+  } catch {
+    // ignore
+  }
 }
 
-interface LoginScreenProps {
-  onLogin: () => void;
-  onBack?: () => void;
-}
+// --- ANIMATION VARIANTS ---
 
-interface DashboardProps {
-  stock: Vehiculo[];
-  notifications: Notification[];
-  onAdd: (car: Vehiculo) => void;
-  onUpdate: (updated: Vehiculo) => void;
-  onDelete: (id: number) => void;
-  onBack?: () => void;
-  onLogout: () => void;
-}
+const containerStagger: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08, 
+      delayChildren: 0.1,
+    }
+  },
+  exit: { opacity: 0 }
+};
 
-interface InventoryViewProps {
-  stock: Vehiculo[];
-  onEdit: (car: Vehiculo) => void;
-  onDelete: (id: number) => void;
-}
+const fadeInUpSpring: Variants = {
+  hidden: { y: 30, opacity: 0 },
+  show: { 
+    y: 0, 
+    opacity: 1,
+    transition: { 
+      type: "spring",
+      stiffness: 260,
+      damping: 20
+    }
+  },
+  exit: { y: -20, opacity: 0 }
+};
 
-interface VehicleFormProps {
-  car: Vehiculo | null;
-  onCancel: () => void;
-  onSubmit: (data: Vehiculo) => void;
-}
+const pageTransitionVariants: Variants = {
+    initial: { opacity: 0, x: -20 },
+    animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } },
+    exit: { opacity: 0, x: 20, transition: { duration: 0.2, ease: "easeIn" } }
+};
 
-interface NavItemProps {
-  active: boolean;
-  icon: React.ElementType;
-  label: string;
-  onClick: () => void;
-  color?: string;
-}
 
-interface KpiCardProps {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  trend?: string;
-  sub?: string;
-  color: string;
-  subValue?: string;
-}
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  unit: string;
-  icon: React.ElementType;
-  trend?: 'up' | 'down' | 'stable';
-  trendValue?: string;
-  color: string;
-}
-
-interface FieldProps {
-  label: string;
-  value: string | number | undefined;
-  onChange: (value: string) => void;
-  type?: string;
-  readOnly?: boolean;
-}
-
-interface SelectFieldProps {
-  label: string;
-  value: string | undefined;
-  options: string[];
-  onChange: (value: string) => void;
-}
-
-interface TextAreaFieldProps {
-  label: string;
-  value: string | undefined;
-  onChange: (value: string) => void;
-  rows?: number;
-}
-
-interface FormSectionProps {
-  title: string;
-  icon: React.ElementType;
-  color: string;
-  children: React.ReactNode;
-}
-
-interface AnalyticsViewProps {
-  stock: Vehiculo[];
-  stats: Stats;
-}
-
-// ===== 1. COMPONENTES DE UI BÁSICOS =====
+// --- COMPONENTES AUXILIARES ---
 
 const AutoCarousel = ({ images, interval = 3000 }: { images: string[], interval?: number }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (!images || images.length === 0) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, interval);
     return () => clearInterval(timer);
-  }, [images, interval]);
-
-  if (!images || images.length === 0) return null;
+  }, [images.length, interval]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -198,25 +237,27 @@ const AutoCarousel = ({ images, interval = 3000 }: { images: string[], interval?
         <motion.img
           key={currentIndex}
           src={images[currentIndex]}
-          initial={{ opacity: 0, scale: 1.1 }}
+          initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.5 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
           className="w-full h-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800";
           }}
         />
       </AnimatePresence>
+
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
         {images.map((_, idx) => (
           <motion.div
             key={idx}
-            animate={{ 
+            animate={{
               width: currentIndex === idx ? 24 : 6,
-              backgroundColor: currentIndex === idx ? '#dc2626' : 'rgba(255,255,255,0.5)'
+              backgroundColor: currentIndex === idx ? '#dc2626' : 'rgba(255,255,255,0.5)',
+              transition: { type: "spring", stiffness: 300, damping: 30 }
             }}
-            className="h-1.5 rounded-full transition-all"
+            className="h-1.5 rounded-full"
           />
         ))}
       </div>
@@ -224,1284 +265,1295 @@ const AutoCarousel = ({ images, interval = 3000 }: { images: string[], interval?
   );
 };
 
-const FormSection: React.FC<FormSectionProps> = ({ title, icon: Icon, color, children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    whileHover={{ y: -5 }}
-    className="bg-[#080808] border border-white/5 overflow-hidden shadow-2xl w-full"
-  >
-    <div className={`absolute top-0 right-0 p-12 bg-current opacity-[0.02] blur-3xl ${color}`} />
-    <h3 className={`text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-3 mb-4 ${color} relative z-10`}>
-      <Icon size={18} /> {title}
-    </h3>
-    <div className="relative z-10">
-      {children}
-    </div>
-  </motion.div>
-);
-
-const Field: React.FC<FieldProps> = ({ label, value, onChange, type = "text", readOnly = false }) => (
-  <div className="space-y-2 flex-1">
-    <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest ml-1">{label}</label>
-    <input
-      type={type}
-      readOnly={readOnly}
-      className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm outline-none focus:border-red-500/50 focus:bg-white/[0.02] transition-all text-white placeholder:text-neutral-800 hover:border-white/20 disabled:opacity-50"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  </div>
-);
-
-const SelectField: React.FC<SelectFieldProps> = ({ label, value, options, onChange }) => (
-  <div className="space-y-2 flex-1">
-    <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest ml-1">{label}</label>
-    <div className="relative">
-      <select
-        className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm outline-none focus:border-red-500/50 focus:bg-white/[0.02] transition-all appearance-none cursor-pointer text-white hover:border-white/20"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((opt) => <option key={opt} value={opt} className="bg-black">{opt}</option>)}
-      </select>
-      <ChevronRight size={16} className="absolute right-5 top-1/2 -translate-y-1/2 rotate-90 text-neutral-600 pointer-events-none" />
-    </div>
-  </div>
-);
-
-const TextAreaField: React.FC<TextAreaFieldProps> = ({ label, value, onChange, rows = 3 }) => (
-  <div className="space-y-2 flex-1 w-full">
-    <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest ml-1">{label}</label>
-    <textarea
-      rows={rows}
-      className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm outline-none focus:border-red-500/50 focus:bg-white/[0.02] transition-all text-white placeholder:text-neutral-800 hover:border-white/20 resize-none"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  </div>
-);
-
-const NavItem: React.FC<NavItemProps> = ({ active, icon: Icon, label, onClick, color = "text-neutral-500" }) => (
-  <motion.button
-    onClick={onClick}
-    whileHover={{ x: 5 }}
-    whileTap={{ scale: 0.95 }}
-    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group relative ${active ? 'bg-red-500 text-black shadow-[0_8px_20px_rgba(234,179,8,0.2)]' : `hover:bg-white/5 ${color}`
-      }`}
-  >
-    <Icon size={20} className={active ? 'text-black' : 'group-hover:text-white transition-colors'} strokeWidth={active ? 2.5 : 2} />
-    <span className="hidden md:block text-[13px] font-bold uppercase tracking-tight">{label}</span>
-    {active && <motion.div layoutId="nav-pill" className="absolute left-[-1rem] w-2 h-8 bg-red-500 rounded-r-full hidden md:block" />}
-  </motion.button>
-);
-
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, icon: Icon, trend, sub, color, subValue }) => (
-  <motion.div
-    initial={{ scale: 0.9, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1 }}
-    whileHover={{ scale: 1.05, y: -5 }}
-    className="bg-[#080808] border border-white/5 p-4 rounded-[2.5rem] relative overflow-hidden group shadow-inner cursor-pointer"
-  >
-    <motion.div
-      animate={{ rotate: [0, 5, 0] }}
-      transition={{ duration: 3, repeat: Infinity }}
-      className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-red-500/5 to-transparent blur-2xl rounded-full"
-    />
-    <div className="flex justify-between items-start mb-6 relative z-10">
-      <motion.div
-        whileHover={{ rotate: 360 }}
-        transition={{ duration: 0.6 }}
-        className="p-3.5 bg-neutral-900 rounded-2xl border border-white/10 group-hover:border-red-500/40 transition-colors"
-      >
-        <Icon size={22} className="text-red-500" />
-      </motion.div>
-      {trend && (
-        <motion.span
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="text-[10px] font-black px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1 uppercase tracking-tighter"
-        >
-          <ArrowUpRight size={10} /> {trend}
-        </motion.span>
-      )}
-    </div>
-    <p className="text-neutral-600 text-[10px] font-black uppercase tracking-[0.2em] mb-1 relative z-10">{label}</p>
-    <h3 className={`text-3xl font-black italic tracking-tighter ${color} relative z-10`}>{value}</h3>
-    {sub && <p className="text-[10px] font-bold text-neutral-700 uppercase mt-1 tracking-widest relative z-10">{sub}</p>}
-    {subValue && <p className="text-[9px] font-bold text-neutral-600 mt-1 relative z-10">{subValue}</p>}
-  </motion.div>
-);
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, unit, icon: Icon, trend, trendValue, color }) => (
-  <motion.div
-    whileHover={{ scale: 1.02, y: -5 }}
-    className={`bg-gradient-to-br ${color} border border-white/5 p-6 rounded-[2rem] relative overflow-hidden`}
-  >
-    <div className="absolute top-0 right-0 p-12 opacity-10">
-      <Icon size={80} />
-    </div>
-    <div className="relative z-10">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon size={18} className="text-white" />
-        <p className="text-xs font-bold text-neutral-400 uppercase">{label}</p>
-      </div>
-      <div className="flex items-end gap-2">
-        <h3 className="text-3xl font-black text-white">{value}</h3>
-        <span className="text-sm font-bold text-neutral-400 mb-1">{unit}</span>
-      </div>
-      {trend && (
-        <div className="mt-2 flex items-center gap-1">
-          {trend === 'up' ? (
-            <ArrowUpRight size={14} className="text-green-500" />
-          ) : trend === 'down' ? (
-            <ArrowDownRight size={14} className="text-green-500" />
-          ) : (
-            <Activity size={14} className="text-neutral-500" />
-          )}
-          <span className={`text-xs font-bold ${trend === 'stable' ? 'text-neutral-500' : 'text-green-500'}`}>
-            {trendValue || 'Estable'}
-          </span>
-        </div>
-      )}
-    </div>
-  </motion.div>
-);
-
-// ===== 2. VISTAS DEL DASHBOARD =====
-
-const AnalyticsView: React.FC<AnalyticsViewProps> = ({ stock }) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-8">
-    <div>
-      <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">ANALÍTICA <span className="text-red-500">AVANZADA</span></h2>
-      <p className="text-neutral-500 text-sm mt-1 uppercase font-bold tracking-widest">Insights y métricas profundas</p>
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="bg-[#080808] border border-white/5 rounded-[2.5rem] p-4">
-        <h3 className="text-lg font-black uppercase mb-6 text-red-500">Top Performers</h3>
-        <div className="space-y-4">
-          {stock
-            .sort((a, b) => ((b.interesados || 0) / (b.vistas || 1)) - ((a.interesados || 0) / (a.vistas || 1)))
-            .slice(0, 5)
-            .map((car, idx) => (
-              <motion.div
-                key={car.id}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: idx * 0.1 }}
-                className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                    <Award size={16} className="text-red-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm">{car.marca} {car.modelo}</p>
-                    <p className="text-xs text-neutral-500">{(((car.interesados || 0) / (car.vistas || 1)) * 100).toFixed(1)}% conversión</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono font-bold text-green-500">{car.interesados || 0} leads</p>
-                  <p className="text-xs text-neutral-500">{car.vistas || 0} vistas</p>
-                </div>
-              </motion.div>
-            ))}
-        </div>
-      </div>
-
-      <div className="bg-[#080808] border border-white/5 rounded-[2.5rem] p-4">
-        <h3 className="text-lg font-black uppercase mb-6 text-red-500">Necesitan Atención</h3>
-        <div className="space-y-4">
-          {stock
-            .filter((c) => c.estado === 'Disponible' && (c.diasStock || 0) > 20)
-            .slice(0, 5)
-            .map((car, idx) => (
-              <motion.div
-                key={car.id}
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: idx * 0.1 }}
-                className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                    <AlertTriangle size={16} className="text-red-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm">{car.marca} {car.modelo}</p>
-                    <p className="text-xs text-neutral-500">{car.diasStock || 0} días en stock</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono font-bold">{car.precio.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}</p>
-                  <p className="text-xs text-red-500">Considerar descuento</p>
-                </div>
-              </motion.div>
-            ))}
-        </div>
-      </div>
-    </div>
-  </motion.div>
-);
-
-const InventoryView: React.FC<InventoryViewProps> = ({ stock, onEdit, onDelete }) => (
-  <motion.div 
-    initial={{ opacity: 0 }} 
-    animate={{ opacity: 1 }} 
-    className="w-full space-y-8"
-  >
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-      <div>
-        <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">
-          ELITE STOCK <span className="text-red-500">LIST</span>
-        </h2>
-        <p className="text-neutral-500 text-sm mt-1 uppercase font-bold tracking-[0.2em]">
-          Control total sobre unidades y precios
-        </p>
-      </div>
-    </div>
-
-    <div className="bg-[#080808] border border-white/5 overflow-hidden shadow-2xl w-full">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-white/[0.03] text-[10px] font-black uppercase text-neutral-500 tracking-[0.2em] border-b border-white/5">
-              <th className="p-4">Detalle Unidad</th>
-              <th className="p-4">Estatus & Historial</th>
-              <th className="p-4">Métricas</th>
-              <th className="p-4">Valoración</th>
-              <th className="p-4 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {stock.map((car) => {
-              const lastPrice = car.precioHistorial?.[car.precioHistorial.length - 2]?.price;
-              const priceTrend = lastPrice ? (car.precio < lastPrice ? 'down' : car.precio > lastPrice ? 'up' : 'stable') : 'stable';
-
-              return (
-                <motion.tr
-                  key={car.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
-                  className="group border-l-4 border-l-transparent hover:border-l-red-500 transition-all"
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-6">
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        className="w-24 h-16 rounded-2xl overflow-hidden ring-1 ring-white/10 group-hover:ring-red-500/50 transition-all shadow-lg relative"
-                      >
-                        {car.imagenes && car.imagenes.length > 0 ? (
-                          <AutoCarousel images={car.imagenes} interval={3500} />
-                        ) : (
-                          <img 
-                            src={car.imagen || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800'} 
-                            alt="" 
-                            className="w-full h-full object-cover" 
-                          />
-                        )}
-                        <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[8px] font-bold text-white uppercase">
-                          {car.ano}
-                        </div>
-                      </motion.div>
-                      <div>
-                        <h4 className="font-black text-base text-white italic leading-tight">
-                          {car.marca} <span className="text-red-500">{car.modelo}</span>
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-mono text-neutral-500">{car.patente || 'S/P'}</span>
-                          <span className="w-1 h-1 rounded-full bg-neutral-700" />
-                          <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">{car.km.toLocaleString()} KM</span>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${
-                          car.estado === 'Disponible' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
-                        }`}>
-                          {car.estado}
-                        </span>
-                        {priceTrend === 'down' && <span className="p-1 bg-blue-500/20 text-blue-500 rounded-md"><History size={10} /></span>}
-                      </div>
-                      <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">{car.tipoVenta} • {car.vendedor}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center bg-white/5 p-2 rounded-xl border border-white/5 w-16">
-                        <p className="text-xs font-black text-white">{car.vistas}</p>
-                        <p className="text-[8px] text-neutral-600 uppercase font-bold">Vistas</p>
-                      </div>
-                      <div className="text-center bg-red-500/5 p-2 rounded-xl border border-red-500/10 w-16">
-                        <p className="text-xs font-black text-red-500">{car.interesados}</p>
-                        <p className="text-[8px] text-neutral-600 uppercase font-bold">Leads</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <p className="font-mono font-bold text-sm text-white">
-                          {car.precio.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
-                        </p>
-                        {priceTrend === 'down' ? <ArrowDownRight size={14} className="text-green-500" /> : priceTrend === 'up' ? <ArrowUpRight size={14} className="text-red-500" /> : null}
-                      </div>
-                      <p className="text-[9px] font-bold text-neutral-700 uppercase tracking-tighter">Est. Com: {car.comisionEstimada?.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}</p>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => onEdit(car)}
-                        className="p-3 bg-neutral-900 border border-white/5 rounded-2xl hover:bg-red-500 hover:text-black transition-all shadow-xl text-white"
-                      >
-                        <Edit3 size={16} />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => onDelete(car.id)}
-                        className="p-3 bg-neutral-900 border border-white/5 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-xl text-white"
-                      >
-                        <Trash2 size={16} />
-                      </motion.button>
-                    </div>
-                  </td>
-                </motion.tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </motion.div>
-);
-
-const VehicleForm: React.FC<VehicleFormProps> = ({ car, onCancel, onSubmit }) => {
-  const [formData, setFormData] = useState<Partial<Vehiculo>>(car || {
-    marca: '', modelo: '', version: '', precio: 0, km: 0, ano: 2024,
-    transmision: 'Automática', combustible: 'Gasolina', 
-    carroceria: 'SUV', puertas: 5, pasajeros: 5, motor: '', 
-    techo: false, asientos: 'Cuero',
-    tipoVenta: 'Propio', estado: 'Disponible', imagen: '', imagenes: [], 
-    patente: '', color: '', vistas: 0, interesados: 0, diasStock: 0, 
-    comisionEstimada: 0, precioHistorial: [], vendedor: 'Admin Elite',
-    financiable: true, valorPie: 0, aire: true, neumaticos: 'Nuevos', llaves: 2,
-    obs: '', hotspots: [] 
-  });
-
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [tempHotspotCoords, setTempHotspotCoords] = useState<{ x: number, y: number } | null>(null);
-  const [hotspotLabel, setHotspotLabel] = useState('');
-  const [hotspotDetail, setHotspotDetail] = useState('');
-  const imagePreviewRef = useRef<HTMLDivElement>(null);
-
-  const comisionEstimada = useMemo(() => {
-    return formData.precio ? Math.round(formData.precio * 0.02) : 0;
-  }, [formData.precio]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if(ev.target?.result) {
-          const newImage = ev.target.result as string;
-          setFormData(prev => {
-            const currentImages = prev.imagenes || [];
-            const isFirst = currentImages.length === 0 && !prev.imagen;
-            return {
-              ...prev,
-              imagen: isFirst ? newImage : prev.imagen,
-              imagenes: [...currentImages, newImage]
-            };
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleImageClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (!formData.imagenes || formData.imagenes.length === 0) return;
-    if (!imagePreviewRef.current) return;
-
-    const rect = imagePreviewRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
-
-    setTempHotspotCoords({ x: xPercent, y: yPercent });
-    setHotspotLabel('');
-    setHotspotDetail('');
-  };
-
-  const handleAddHotspot = () => {
-    if (!tempHotspotCoords || !hotspotLabel || !hotspotDetail) {
-      alert("Debes completar la etiqueta y el detalle del punto.");
-      return;
-    }
-
-    const newHotspot: Hotspot = {
-      id: Date.now().toString(),
-      x: tempHotspotCoords.x,
-      y: tempHotspotCoords.y,
-      label: hotspotLabel.toUpperCase(),
-      detail: hotspotDetail,
-      imageIndex: activeImageIndex // Guardar el índice de la foto actual
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      hotspots: [...(prev.hotspots || []), newHotspot]
-    }));
-    setTempHotspotCoords(null);
-    setHotspotLabel('');
-    setHotspotDetail('');
-  };
-
-  const handleDeleteHotspot = (idToDelete: string) => {
-    setFormData(prev => ({
-      ...prev,
-      hotspots: (prev.hotspots || []).filter(spot => spot.id !== idToDelete)
-    }));
-  };
-
-  const removeImage = (indexToRemove: number) => {
-    setFormData(prev => {
-      const newImages = (prev.imagenes || []).filter((_, idx) => idx !== indexToRemove);
-      
-      // Borrar hotspots de esta imagen y reordenar los siguientes
-      const newHotspots = (prev.hotspots || [])
-        .filter(h => h.imageIndex !== indexToRemove)
-        .map(h => ({
-          ...h,
-          imageIndex: h.imageIndex > indexToRemove ? h.imageIndex - 1 : h.imageIndex
-        }));
-      
-      return {
-        ...prev,
-        imagenes: newImages,
-        imagen: newImages.length > 0 ? newImages[0] : '', 
-        hotspots: newHotspots
-      };
-    });
-    if (activeImageIndex >= indexToRemove && activeImageIndex > 0) {
-      setActiveImageIndex(activeImageIndex - 1);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.marca || !formData.modelo || !formData.precio || !formData.ano) {
-      alert('Por favor completa los campos obligatorios: Marca, Modelo, Año y Precio.');
-      return;
-    }
-    
-    const vehiculoCompleto: Vehiculo = {
-      id: car?.id || Date.now(),
-      marca: formData.marca,
-      modelo: formData.modelo,
-      version: formData.version || '',
-      ano: formData.ano || 2024,
-      precio: formData.precio,
-      km: formData.km || 0,
-      duenos: formData.duenos || 1,
-      traccion: formData.traccion || 'Delantera',
-      transmision: formData.transmision || 'Automática',
-      cilindrada: formData.cilindrada || '2.0L',
-      combustible: formData.combustible || 'Gasolina',
-      carroceria: formData.carroceria || 'SUV',
-      puertas: formData.puertas || 5,
-      pasajeros: formData.pasajeros || 5,
-      motor: formData.motor || '',
-      techo: formData.techo || false,
-      asientos: formData.asientos || 'Tela',
-      tipoVenta: (formData.tipoVenta as 'Propio' | 'Consignado') || 'Propio',
-      vendedor: formData.vendedor || 'Admin Elite',
-      financiable: formData.financiable ?? true,
-      valorPie: formData.valorPie || 0,
-      aire: formData.aire ?? true,
-      neumaticos: formData.neumaticos || 'Buenos',
-      llaves: formData.llaves || 2,
-      obs: formData.obs || '',
-      imagenes: formData.imagenes || [],
-      estado: (formData.estado as 'Disponible' | 'Vendido' | 'Reservado') || 'Disponible',
-      diasStock: formData.diasStock || 0,
-      vistas: formData.vistas || 0,
-      interesados: formData.interesados || 0,
-      patente: formData.patente || '',
-      color: formData.color || '',
-      comisionEstimada,
-      precioHistorial: car?.precioHistorial || [{ date: new Date().toISOString().split('T')[0], price: formData.precio || 0 }],
-      imagen: formData.imagen || '',
-      hotspots: formData.hotspots || []
-    };
-
-    onSubmit(vehiculoCompleto);
-  };
-
-  const currentImage = formData.imagenes && formData.imagenes.length > 0 
-    ? formData.imagenes[activeImageIndex] 
-    : formData.imagen;
+const CarCard = ({ car, onClick, isFavorite, onToggleFavorite }: CarCardProps) => {
+  if (!car) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-5xl mx-auto pb-32">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-        <div className="flex items-center gap-6">
-          <motion.button
-            whileHover={{ scale: 1.1, x: -5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onCancel}
-            className="p-4 bg-neutral-900 rounded-3xl border border-white/5 hover:border-red-500/40 hover:text-red-500 transition-all shadow-xl"
-          >
-            <ArrowLeft size={24} className="text-white" />
-          </motion.button>
-          <div>
-            <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">
-              {car ? 'Gestión de Unidad' : 'Nueva Adquisición'}
-            </h2>
-            <p className="text-neutral-500 text-xs font-bold uppercase tracking-[0.2em] mt-1">Ficha Técnica Completa</p>
-          </div>
+    <motion.div
+      whileHover={{ y: -10, scale: 1.02, boxShadow: "0 25px 50px -12px rgba(220, 38, 38, 0.25)" }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      onClick={() => onClick(car)}
+      className="group bg-[#121212] border border-white/5 rounded-[24px] overflow-hidden cursor-pointer flex flex-col h-full relative transition-colors duration-300"
+    >
+      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+        <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl backdrop-blur-md border ${
+          car.tipoVenta === 'Propio'
+            ? 'bg-red-600 text-white border-red-500/50'
+            : 'bg-zinc-800 text-zinc-100 border-white/10'
+          }`}>
+          {car.tipoVenta}
+        </span>
+        {car.estado && car.estado !== 'Disponible' && (
+          <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-600 text-white border border-orange-500/50 backdrop-blur-md">
+            {car.estado}
+          </span>
+        )}
+      </div>
+
+      <motion.button
+        whileTap={{ scale: 0.8, rotate: -15 }}
+        onClick={(e: React.MouseEvent) => {
+          e.stopPropagation(); 
+          onToggleFavorite(e, car.id);
+        }}
+        className="absolute top-3 right-3 z-30 p-2.5 rounded-xl bg-black/40 hover:bg-black/60 backdrop-blur-md text-white transition-all border border-white/10 shadow-lg"
+      >
+        <Heart 
+          size={18} 
+          className={isFavorite ? "fill-red-500 text-red-500" : "text-gray-300"} 
+        />
+      </motion.button>
+
+      <div className="relative h-60 overflow-hidden bg-zinc-900">
+        <AutoCarousel
+          images={Array.isArray(car.imagenes) && car.imagenes.length > 0
+            ? car.imagenes
+            : ["https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"]}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-90" />
+        <div className="absolute bottom-4 left-5">
+          <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 drop-shadow-md">
+            {car.marca}
+          </p>
+          <p className="text-white font-bold text-2xl drop-shadow-2xl tracking-tight">
+            {formatPrice(car.precio)}
+          </p>
+          {car.financiable && (
+            <p className="text-zinc-400 text-[10px] mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              Pie: {formatPrice(car.valorPie)}
+            </p>
+          )}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          
-          <FormSection title="Identidad & Clasificación" icon={Car} color="text-red-500">
-            <div className="grid grid-cols-2 gap-6">
-              <Field label="Marca" value={formData.marca} onChange={(v) => setFormData({ ...formData, marca: v })} />
-              <Field label="Modelo" value={formData.modelo} onChange={(v) => setFormData({ ...formData, modelo: v })} />
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-               <Field label="Versión (Opcional)" value={formData.version} onChange={(v) => setFormData({ ...formData, version: v })} />
-               <SelectField 
-                label="Carrocería" 
-                value={formData.carroceria} 
-                options={['SUV', 'Sedán', 'Hatchback', 'Coupé', 'Camioneta', 'Convertible', 'Station Wagon', 'Van']} 
-                onChange={(v) => setFormData({ ...formData, carroceria: v })} 
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-6">
-              <Field label="Año" type="number" value={formData.ano} onChange={(v) => setFormData({ ...formData, ano: parseInt(v) || 2024 })} />
-              <Field label="Patente" value={formData.patente} onChange={(v) => setFormData({ ...formData, patente: v.toUpperCase() })} />
-              <Field label="Color" value={formData.color} onChange={(v) => setFormData({ ...formData, color: v })} />
-            </div>
-          </FormSection>
+      <div className="p-6 flex flex-col flex-grow bg-gradient-to-b from-[#121212] to-[#0a0a0a]">
+        <div className="mb-5">
+          <h3 className="text-zinc-100 font-bold text-xl leading-tight group-hover:text-red-500 transition-colors">
+            {car.modelo}
+          </h3>
+          <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1 opacity-70">
+            {car.version}
+          </p>
+        </div>
 
-          <FormSection title="Estrategia Comercial" icon={DollarSign} color="text-green-500">
-            <div className="grid grid-cols-2 gap-6">
-              <Field 
-                label="Precio Lista ($)" 
-                type="number" 
-                value={formData.precio} 
-                onChange={(v) => {
-                  const newPrice = parseInt(v) || 0;
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    precio: newPrice,
-                    valorPie: (!prev.valorPie || prev.valorPie === 0) ? Math.round(newPrice * 0.20) : prev.valorPie
-                  }));
-                }} 
-              />
-              <Field label="Pie Mínimo Sugerido ($)" type="number" value={formData.valorPie} onChange={(v) => setFormData({ ...formData, valorPie: parseInt(v) || 0 })} />
+        <div className="grid grid-cols-2 gap-y-4 text-[13px] text-zinc-400 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Calendar size={14} />
             </div>
-            <div className="grid grid-cols-2 gap-6">
-               <Field label="Vendedor Asignado" value={formData.vendedor} onChange={(v) => setFormData({ ...formData, vendedor: v })} />
-               <SelectField label="Financiamiento" value={formData.financiable ? 'Sí' : 'No'} options={['Sí', 'No']} onChange={(v) => setFormData({ ...formData, financiable: v === 'Sí' })} />
+            <span className="font-semibold">{car.ano}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Gauge size={14} />
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              <SelectField 
-                label="Modalidad" 
-                value={formData.tipoVenta} 
-                options={['Propio', 'Consignado']} 
-                onChange={(v) => setFormData({ ...formData, tipoVenta: v as 'Propio' | 'Consignado' })} 
-              />
-              <SelectField 
-                label="Estatus" 
-                value={formData.estado} 
-                options={['Disponible', 'Reservado', 'Vendido']} 
-                onChange={(v) => setFormData({ ...formData, estado: v as 'Disponible' | 'Reservado' | 'Vendido' })} 
-              />
+            <span className="font-semibold">{car.km.toLocaleString()} km</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Fuel size={14} />
             </div>
-          </FormSection>
-
-          <FormSection title="Especificaciones Técnicas" icon={ShieldCheck} color="text-blue-500">
-            <div className="grid grid-cols-2 gap-6">
-              <Field label="Odómetro (KM)" type="number" value={formData.km} onChange={(v) => setFormData({ ...formData, km: parseInt(v) || 0 })} />
-              <Field label="Motor / Cilindrada" value={formData.motor} onChange={(v) => setFormData({ ...formData, motor: v })} />
+            <span className="font-semibold">{car.combustible}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 text-red-500 border border-white/5">
+              <Settings2 size={14} />
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              <SelectField label="Transmisión" value={formData.transmision} options={['Automática', 'Mecánica', 'PDK', 'DSG', 'CVT']} onChange={(v) => setFormData({ ...formData, transmision: v })} />
-              <SelectField label="Combustible" value={formData.combustible} options={['Gasolina', 'Diesel', 'Híbrido', 'Eléctrico']} onChange={(v) => setFormData({ ...formData, combustible: v })} />
-            </div>
-             <div className="grid grid-cols-3 gap-4">
-               <Field label="Puertas" type="number" value={formData.puertas} onChange={(v) => setFormData({ ...formData, puertas: parseInt(v) || 5 })} />
-               <Field label="Pasajeros" type="number" value={formData.pasajeros} onChange={(v) => setFormData({ ...formData, pasajeros: parseInt(v) || 5 })} />
-               <Field label="Dueños" type="number" value={formData.duenos} onChange={(v) => setFormData({ ...formData, duenos: parseInt(v) || 1 })} />
-            </div>
-             <div className="grid grid-cols-2 gap-6">
-               <SelectField label="Tapiz / Asientos" value={formData.asientos} options={['Cuero', 'Tela', 'Alcántara', 'Mixto']} onChange={(v) => setFormData({ ...formData, asientos: v })} />
-               <SelectField label="Techo Solar" value={formData.techo ? 'Sí' : 'No'} options={['Sí', 'No']} onChange={(v) => setFormData({ ...formData, techo: v === 'Sí' })} />
-            </div>
-          </FormSection>
-
-           <FormSection title="Detalles & Observaciones" icon={Activity} color="text-orange-500">
-              <div className="grid grid-cols-2 gap-6 mb-4">
-                 <SelectField label="Estado Neumáticos" value={formData.neumaticos} options={['Nuevos', 'Buenos', 'Medios', 'Gastados']} onChange={(v) => setFormData({ ...formData, neumaticos: v })} />
-                 <Field label="Nº de Llaves" type="number" value={formData.llaves} onChange={(v) => setFormData({ ...formData, llaves: parseInt(v) || 2 })} />
-              </div>
-              <TextAreaField 
-                label="Observaciones Generales (Visible para clientes)" 
-                value={formData.obs} 
-                onChange={(v) => setFormData({ ...formData, obs: v })} 
-                rows={4}
-              />
-           </FormSection>
-
-          <div className="lg:col-span-2">
-            <FormSection title="Galería y Puntos de Interés" icon={ImageIcon} color="text-purple-500">
-              <div className="space-y-4">
-                
-                <div className="flex gap-2">
-                  <motion.label whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 cursor-pointer bg-neutral-900 border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all">
-                    <ImagePlus size={16} className="text-blue-400" /> <span>+ Fotos Exterior</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-                  </motion.label>
-                  <motion.label whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 cursor-pointer bg-neutral-900 border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all">
-                    <ImagePlus size={16} className="text-orange-400" /> <span>+ Fotos Interior</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-                  </motion.label>
-                </div>
-
-                <div className="mt-4">
-                   <div className="flex justify-between items-center mb-2">
-                     <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">
-                       Editor de Puntos (Foto {activeImageIndex + 1} de {formData.imagenes?.length || 0})
-                     </label>
-                     {formData.imagenes && formData.imagenes.length > 0 && (
-                       <span className="text-[9px] text-red-500 font-bold animate-pulse">Click en la foto para agregar punto</span>
-                     )}
-                   </div>
-
-                  <div ref={imagePreviewRef} onClick={handleImageClick} className="aspect-[16/9] bg-neutral-900 border border-white/5 rounded-[2rem] overflow-hidden relative group cursor-crosshair shadow-2xl">
-                    {currentImage ? (
-                      <>
-                        <img src={currentImage} className="w-full h-full object-cover pointer-events-none select-none" alt="Preview" />
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors pointer-events-none" />
-                        
-                        {formData.imagenes && formData.imagenes.length > 1 && (
-                          <>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(prev => prev > 0 ? prev - 1 : (formData.imagenes?.length || 1) - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors z-40">
-                              <ChevronLeft size={20} />
-                            </button>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(prev => prev < (formData.imagenes?.length || 1) - 1 ? prev + 1 : 0); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors z-40">
-                              <ChevronRight size={20} />
-                            </button>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-neutral-700 pointer-events-none">
-                        <ImageIcon size={48} strokeWidth={1} />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-4">Sube fotos para comenzar</p>
-                      </div>
-                    )}
-
-                    {formData.hotspots?.filter(h => h.imageIndex === activeImageIndex).map((spot) => (
-                      <div key={spot.id} className="absolute w-5 h-5 bg-red-600/90 border-2 border-white rounded-full shadow-[0_0_15px_rgba(220,38,38,0.8)] transform -translate-x-1/2 -translate-y-1/2 z-20 group/spot cursor-pointer hover:scale-125 transition-transform" style={{ left: `${spot.x}%`, top: `${spot.y}%` }}>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteHotspot(spot.id); }} className="absolute -top-4 -right-4 bg-neutral-900 text-red-500 rounded-full p-1 opacity-0 group-hover/spot:opacity-100 transition-all scale-75 hover:scale-100 border border-red-500/30">
-                            <Trash2 size={12} />
-                          </button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 backdrop-blur-md border border-white/10 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover/spot:opacity-100 pointer-events-none z-50">
-                          {spot.label}
-                        </div>
-                      </div>
-                    ))}
-
-                    {tempHotspotCoords && (
-                      <div className="absolute w-5 h-5 bg-yellow-400 border-2 border-white rounded-full shadow-[0_0_15px_yellow] animate-bounce transform -translate-x-1/2 -translate-y-1/2 z-30" style={{ left: `${tempHotspotCoords.x}%`, top: `${tempHotspotCoords.y}%` }} />
-                    )}
-                  </div>
-
-                  {formData.imagenes && formData.imagenes.length > 0 && (
-                    <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
-                      {formData.imagenes.map((img, idx) => (
-                        <div key={idx} className={`relative flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${activeImageIndex === idx ? 'border-red-500 scale-105' : 'border-transparent opacity-50 hover:opacity-100'}`} onClick={() => setActiveImageIndex(idx)}>
-                          <img src={img} className="w-full h-full object-cover" alt="" />
-                          <button type="button" onClick={(e) => { e.stopPropagation(); removeImage(idx); }} className="absolute top-0 right-0 p-0.5 bg-black/50 text-white hover:text-red-500 hover:bg-black">
-                            <Trash2 size={10} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <AnimatePresence>
-                  {tempHotspotCoords && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                      <div className="mt-4 p-5 bg-gradient-to-r from-neutral-900 to-neutral-900/50 border border-red-500/20 rounded-2xl space-y-4 relative shadow-xl">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-red-500 rounded-l-2xl"/>
-                        <h4 className="text-xs font-black uppercase text-white flex items-center gap-2">
-                          <Target size={16} className="text-red-500" /> Detalle del Punto (En Foto {activeImageIndex + 1})
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                          <Field label="Etiqueta (Ej: Fibra de Carbono)" value={hotspotLabel} onChange={setHotspotLabel} />
-                          <Field label="Descripción Detallada" value={hotspotDetail} onChange={setHotspotDetail} />
-                          <div className="flex gap-2">
-                              <button type="button" onClick={handleAddHotspot} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20">
-                                  <PlusCircle size={16}/> Guardar
-                              </button>
-                              <button type="button" onClick={() => setTempHotspotCoords(null)} className="bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white font-bold py-3 px-4 rounded-xl text-xs transition-all">
-                                  Cancelar
-                              </button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </FormSection>
+            <span className="font-semibold truncate">{car.transmision}</span>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 pt-10">
-          <motion.button type="submit" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 bg-red-500 text-black font-black py-5 rounded-[2rem] shadow-2xl shadow-red-500/20 hover:scale-[1.02] active:scale-95 transition-all text-sm italic uppercase">
-            {car ? 'CONFIRMAR ACTUALIZACIÓN' : 'INGRESAR VEHÍCULO'}
-          </motion.button>
-          <motion.button type="button" onClick={onCancel} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="px-12 bg-neutral-900 border border-white/5 font-bold rounded-[2rem] text-neutral-500 hover:text-white transition-all text-sm">
-            DESCARTAR
-          </motion.button>
+        <div className="mt-auto pt-5 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-xs text-zinc-400">
+            <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center text-red-500 font-black border border-white/10 shadow-inner">
+              {car.vendedor.charAt(0)}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[9px] uppercase font-bold text-zinc-600">Vendedor</span>
+              <span className="text-zinc-300 font-bold leading-none">{car.vendedor.split(' ')[0]}</span>
+            </div>
+          </div>
+           
+          <motion.span 
+            className="text-red-500 text-[11px] font-black uppercase flex items-center gap-1.5 bg-red-500/10 px-3 py-2 rounded-xl border border-red-500/20"
+            whileHover={{ x: 3, backgroundColor: "rgba(220, 38, 38, 0.15)" }}
+          >
+            Ficha <ChevronRight size={14} />
+          </motion.span>
         </div>
-      </form>
+      </div>
+      <div className="absolute inset-0 pointer-events-none rounded-[24px] border-2 border-white/0 group-hover:border-red-600/30 transition-all duration-500" />
     </motion.div>
   );
 };
 
-// ===== 3. PANTALLAS (LoginScreen, LionsEliteDashboard) =====
+// --- NUEVO COMPONENTE CAR MODAL BIOMÉTRICO (REEMPLAZO) ---
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onBack }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+const DecryptText = ({ text, className, speed = 50 }: { text: string, className?: string, speed?: number }) => {
+  const [display, setDisplay] = useState('');
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  useEffect(() => {
+    let i = 0;
+    const timer = setInterval(() => {
+      setDisplay(text.split('').map((char, index) => {
+        if (index < i) return char;
+        return chars[Math.floor(Math.random() * chars.length)];
+      }).join(''));
+       
+      if (i >= text.length) clearInterval(timer);
+      i += 1 / 3;
+    }, speed);
+    return () => clearInterval(timer);
+  }, [text, speed]);
 
-    if (!username || !password) {
-      setError('Por favor completa todos los campos');
-      return;
+  return <span className={className}>{display}</span>;
+};
+
+const CarModal = ({ car, onClose, onContact }: { car: Vehiculo; onClose: () => void; onContact: (c: Vehiculo) => void }) => {
+  const [bootSequence, setBootSequence] = useState(true);
+  const [techOpen, setTechOpen] = useState(false);
+  const [zoomActive, setZoomActive] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [currentImgIdx, setCurrentImgIdx] = useState(0);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const lensRef = useRef<HTMLDivElement>(null);
+
+  // Mapear datos del auto a formato "Specs" del modal tecnológico
+  const carSpecs = useMemo(() => [
+    { title: "MOTORIZACIÓN", value: car.cilindrada || "N/A", progress: 85 },
+    { title: "TRANSMISIÓN", value: car.transmision, meta: "RESPUESTA: 0.002s" },
+    { title: "TRACCIÓN", value: car.traccion || "Delantera", meta: "STATUS: NOMINAL" },
+    { title: "KILOMETRAJE", value: `${car.km.toLocaleString()} KM`, progress: Math.max(0, 100 - (car.km / 2000)) },
+    { title: "COMBUSTIBLE", value: car.combustible, meta: "EFICIENCIA: ALTA" },
+  ], [car]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBootSequence(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!imageRef.current) return;
+
+    const rect = imageRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
+      setCoords({ x: Math.round(x), y: Math.round(y) });
     }
 
-    setIsLoading(true);
-
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin') {
-        onLogin();
-      } else {
-        setError('Credenciales incorrectas');
-        setIsLoading(false);
-      }
-    }, 1500);
-  };
+    if (zoomActive && lensRef.current) {
+      const lens = lensRef.current;
+      const ratio = 2.5;
+       
+      requestAnimationFrame(() => {
+        lens.style.transform = `translate(${e.clientX - 75}px, ${e.clientY - 75}px)`;
+        lens.style.backgroundImage = `url(${car.imagenes[currentImgIdx]})`;
+        lens.style.backgroundSize = `${rect.width * ratio}px ${rect.height * ratio}px`;
+        lens.style.backgroundPosition = `-${x * ratio - 75}px -${y * ratio - 75}px`;
+      });
+    }
+  }, [zoomActive, currentImgIdx, car.imagenes]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a0a] to-[#050505] flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background animations */}
-      <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-red-500/5 blur-[150px] rounded-full"
-        />
-        <motion.div
-          animate={{ scale: [1.2, 1, 1.2], rotate: [90, 0, 90] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-blue-500/5 blur-[150px] rounded-full"
-        />
-      </div>
+    <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 font-mono overflow-hidden"
+    >
+      <style>{`
+        @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+         
+        .grid-bg {
+          background-image: linear-gradient(rgba(255, 0, 60, 0.05) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255, 0, 60, 0.05) 1px, transparent 1px);
+          background-size: 30px 30px;
+        }
+        .scanner-line {
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #ff003c, transparent);
+          box-shadow: 0 0 20px #ff003c;
+          animation: scan 3s linear infinite;
+        }
+        .glitch-effect:hover { animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite; }
+         
+        .tech-scroll::-webkit-scrollbar { width: 4px; }
+        .tech-scroll::-webkit-scrollbar-track { background: #0a0a0c; }
+        .tech-scroll::-webkit-scrollbar-thumb { background: #333; }
+        .tech-scroll::-webkit-scrollbar-thumb:hover { background: #ff003c; }
+      `}</style>
 
-      {onBack && (
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={onBack}
-          className="absolute top-4 left-8 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group z-20"
+      {/* Grid de Fondo */}
+      <div className="grid-bg absolute inset-0 pointer-events-none" />
+      <div className="scanner-line fixed top-0 left-0 w-full pointer-events-none z-40" />
+
+      {/* SECUENCIA DE ARRANQUE */}
+      <AnimatePresence>
+      {bootSequence ? (
+        <motion.div 
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 flex items-center justify-center bg-black z-[60]"
         >
-          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-bold">Volver al Catálogo</span>
-        </motion.button>
-      )}
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 border-4 border-t-red-600 border-r-transparent border-b-red-600 border-l-transparent rounded-full animate-spin mx-auto"/>
+            <div className="text-red-500 text-xs tracking-[0.5em] animate-pulse">INITIALIZING SECURE PROTOCOL...</div>
+            <div className="text-gray-600 text-[10px] font-mono">
+              LOADING ASSETS... 98%<br/>
+              VERIFYING BIOMETRICS... OK
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+      </AnimatePresence>
 
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="w-full max-w-md relative z-10"
+      {/* CONTENEDOR PRINCIPAL DEL MODAL */}
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
+        className="relative w-full max-w-[1400px] h-[90vh] bg-[#0a0a0c] border border-white/10 rounded-sm shadow-[0_0_100px_rgba(255,0,60,0.1)] flex flex-col overflow-hidden z-10"
       >
-        <div className="bg-[#080808] border border-white/5 overflow-hidden shadow-2xl w-full rounded-[2rem] p-8">
-          <motion.div
-            className="text-center mb-10"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+        
+        {/* HEADER TÉCNICO */}
+        <header className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/80 backdrop-blur-sm select-none">
+          <div className="flex items-center gap-4">
+            <div className="flex gap-1">
+               <div className="w-1 h-4 bg-red-600 animate-pulse" />
+               <div className="w-1 h-4 bg-red-600/50" />
+            </div>
+            <span className="text-[10px] tracking-[0.2em] text-gray-400 uppercase">
+              System: <span className="text-white font-bold">ONLINE</span> // Mode: <span className="text-red-500">ACQUISITION</span>
+            </span>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="group flex items-center gap-2 px-4 py-1 border border-red-900/30 hover:border-red-600 hover:bg-red-600/10 transition-all"
           >
-            <motion.div
-              className="inline-flex p-6 rounded-[2rem] bg-gradient-to-br from-red-500 to-yellow-600 text-black mb-6 shadow-2xl shadow-red-500/40 relative overflow-hidden"
-              whileHover={{ scale: 1.05, rotate: 3 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-              />
-              <Zap size={48} fill="black" className="relative z-10" />
-            </motion.div>
-            <h1 className="text-5xl font-black italic tracking-tighter text-white mb-2">
-              AUTO <span className="text-red-500">EFEC</span>
-            </h1>
-            <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.4em]">
-              Sistema de Gestión Automotriz
-            </p>
-          </motion.div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest ml-4">
-                Usuario
-              </label>
-              <div className="relative group">
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-[1.5rem] p-5 pl-12 text-sm focus:border-red-500/50 outline-none transition-all placeholder:text-neutral-800 text-white group-hover:border-white/20"
-                  placeholder="admin"
-                  disabled={isLoading}
-                />
-                <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-red-500 transition-colors" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-neutral-500 uppercase tracking-widest ml-4">
-                Contraseña
-              </label>
-              <div className="relative group">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-[1.5rem] p-5 pl-12 text-sm focus:border-red-500/50 outline-none transition-all placeholder:text-neutral-800 text-white group-hover:border-white/20"
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within:text-red-500 transition-colors" />
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3"
-                >
-                  <AlertTriangle size={18} className="text-red-500" />
-                  <p className="text-red-400 text-sm font-medium">{error}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <motion.button
-              type="submit"
-              disabled={isLoading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full bg-gradient-to-r from-red-500 to-yellow-600 text-black font-black py-6 rounded-[1.5rem] shadow-2xl shadow-red-500/20 hover:shadow-red-500/40 transition-all mt-8 uppercase italic tracking-tighter text-lg relative overflow-hidden disabled:opacity-50"
-            >
-              {isLoading ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="inline-block"
-                >
-                  <Zap size={24} />
-                </motion.div>
-              ) : (
-                'Acceder al Sistema'
-              )}
-            </motion.button>
-          </form>
-
-          <div className="mt-8 pt-8 border-t border-white/5">
-            <p className="text-center text-[9px] text-neutral-700 font-bold uppercase tracking-widest mb-2">
-              Demo Credentials
-            </p>
-            <div className="flex justify-center gap-4 text-[10px] text-neutral-600">
-              <span>Usuario: <span className="text-red-500">admin</span></span>
-              <span>•</span>
-              <span>Pass: <span className="text-red-500">admin</span></span>
-            </div>
-          </div>
-
-          <p className="text-center mt-6 text-[9px] text-neutral-700 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-            <ShieldCheck size={12} className="text-green-500" />
-            Conexión Segura SSL/TLS
-          </p>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-const LionsEliteDashboard: React.FC<DashboardProps> = ({
-  stock,
-  notifications,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onBack,
-  onLogout,
-}) => {
-  const [view, setView] = useState<'overview' | 'inventory' | 'form' | 'analytics'>('overview');
-  const [filterText, setFilterText] = useState('');
-  const [editingCar, setEditingCar] = useState<Vehiculo | null>(null);
-  const [showNotifications, setShowNotifications] = useState(false);
-
-  const stats = useMemo(() => {
-    if (!stock) return {
-        totalValue: 0, avgDays: 0, leads: 0, count: 0, totalComission: 0,
-        available: 0, sold: 0, totalViews: 0, avgPrice: 0, conversionRate: '0'
-    };
-
-    const available = stock.filter((c) => c.estado !== 'Vendido');
-    const sold = stock.filter((c) => c.estado === 'Vendido');
-    const totalValue = available.reduce((acc, c) => acc + c.precio, 0);
-    const avgDays = Math.round(stock.reduce((acc, c) => acc + (c.diasStock || 0), 0) / (stock.length || 1));
-    const leads = stock.reduce((acc, c) => acc + (c.interesados || 0), 0);
-    const totalComission = available.reduce((acc, c) => acc + (c.comisionEstimada || 0), 0);
-    const totalViews = stock.reduce((acc, c) => acc + (c.vistas || 0), 0);
-    const avgPrice = totalValue / (available.length || 1);
-    const conversionRate = ((sold.length / stock.length) * 100).toFixed(1);
-
-    return {
-      totalValue,
-      avgDays,
-      leads,
-      count: stock.length,
-      totalComission,
-      available: available.length,
-      sold: sold.length,
-      totalViews,
-      avgPrice,
-      conversionRate
-    };
-  }, [stock]);
-
-  return (
-    <div className="min-h-screen bg-[#050505] text-neutral-100 font-sans selection:bg-red-500/30">
-      <aside className="fixed left-0 top-0 h-full w-20 md:w-64 bg-[#080808] border-r border-white/5 z-50 transition-all flex flex-col">
-        <div className="p-6 flex items-center gap-3">
-          <motion.div
-            whileHover={{ rotate: 180, scale: 1.1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.2)]"
-          >
-            <Zap size={22} className="text-black fill-black" />
-          </motion.div>
-          <span className="hidden md:block font-black text-xl tracking-tighter italic text-white">LIONS <span className="text-red-500">ELITE</span></span>
-        </div>
-
-        <nav className="mt-8 px-4 space-y-1.5 flex-1">
-          <NavItem active={view === 'overview'} icon={BarChart3} label="Dashboard" onClick={() => setView('overview')} />
-          <NavItem active={view === 'inventory'} icon={Car} label="Inventario" onClick={() => setView('inventory')} />
-          <NavItem active={view === 'form'} icon={PlusCircle} label="Publicar" onClick={() => { setEditingCar(null); setView('form'); }} />
-          <NavItem active={view === 'analytics'} icon={LineChart} label="Analítica" onClick={() => setView('analytics')} />
-          <div className="py-4"><div className="h-px bg-white/5 mx-2" /></div>
-          {onBack && (
-            <NavItem active={false} icon={ArrowLeft} label="Catálogo" onClick={onBack} color="text-blue-500/70" />
-          )}
-          <NavItem active={false} icon={LogOut} label="Cerrar Sesión" onClick={onLogout} color="text-red-500/70" />
-        </nav>
-
-        <div className="p-4 md:p-6 bg-white/[0.02] border-t border-white/5">
-          <div className="flex items-center gap-3">
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-yellow-600 border border-yellow-400/20 flex items-center justify-center text-black font-bold"
-            >
-              A
-            </motion.div>
-            <div className="hidden md:block">
-              <p className="text-xs font-bold text-white">Admin Elite</p>
-              <p className="text-[10px] text-neutral-500 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Online
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="pl-20 md:pl-64 transition-all min-h-screen flex flex-col">
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-4 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40">
-          <div className="flex items-center gap-2">
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-red-500"
-            />
-            <h1 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">
-              System Status: Online
-            </h1>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="relative group hidden lg:block">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={14} />
-              <input
-                placeholder="Buscar unidad o patente..."
-                className="bg-neutral-900/50 border border-white/5 rounded-2xl py-2.5 pl-12 pr-4 text-xs outline-none focus:border-red-500/40 w-80 transition-all placeholder:text-neutral-700"
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-              />
-            </div>
-
-            <div className="relative">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-3 bg-neutral-900 rounded-2xl border border-white/5 hover:border-red-500/30 transition-all relative"
-              >
-                <Bell size={18} className="text-neutral-400" />
-                <motion.span
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-black"
-                />
-              </motion.button>
-
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 bg-[#0A0A0A] border border-white/10 rounded-3xl shadow-2xl p-4 overflow-hidden"
-                  >
-                    <div className="flex items-center justify-between mb-4 px-2">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400">Notificaciones</h4>
-                      <span className="text-[10px] text-red-500 font-bold">{notifications.length} Nuevas</span>
-                    </div>
-                    <div className="space-y-2">
-                      {notifications.map((n) => (
-                        <motion.div
-                          key={n.id}
-                          initial={{ x: -20, opacity: 0 }}
-                          animate={{ x: 0, opacity: 1 }}
-                          className="p-3 bg-white/5 rounded-2xl flex gap-3 items-start border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                          <div className={`p-2 rounded-xl ${n.type === 'price' ? 'bg-blue-500/10 text-blue-500' :
-                              n.type === 'warning' ? 'bg-orange-500/10 text-orange-500' :
-                                'bg-red-500/10 text-red-500'
-                            }`}>
-                            {n.type === 'price' ? <TrendingUp size={14} /> :
-                              n.type === 'warning' ? <AlertTriangle size={14} /> :
-                                <Zap size={14} />}
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-medium text-neutral-200">{n.text}</p>
-                            <p className="text-[9px] text-neutral-500 mt-0.5">{n.time} atrás</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+            <span className="text-[10px] text-red-500 group-hover:text-white">TERMINATE SESSION</span>
+            <span className="text-red-500 group-hover:text-white">✕</span>
+          </button>
         </header>
 
-        <div className="w-full space-y-10">
-          <AnimatePresence mode="wait">
-            {view === 'overview' && (
-              <motion.div key="overview" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="p-4 space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <KpiCard label="Valor del Inventario" value={`$${(stats.totalValue / 1000000).toFixed(1)}M`} icon={Wallet} trend="+5.2%" color="text-white" subValue={`${stats.available} unidades`} />
-                  <KpiCard label="Comisión Proyectada" value={`$${(stats.totalComission / 1000000).toFixed(1)}M`} icon={Percent} trend="+1.1%" color="text-red-500" subValue="Este mes" />
-                  <KpiCard label="Tasa de Conversión" value={`${stats.conversionRate}%`} icon={Target} sub="Performance" color="text-green-500" subValue={`${stats.sold} vendidos`} />
-                  <KpiCard label="Engagement Total" value={stats.totalViews} icon={Eye} sub="Vistas" color="text-blue-500" subValue={`${stats.leads} leads`} />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <StatCard label="Rotación Media" value={`${stats.avgDays}`} unit="días" icon={Clock} trend="down" trendValue="15%" color="from-purple-500/10 to-purple-600/5" />
-                  <StatCard label="Precio Promedio" value={`$${(stats.avgPrice / 1000000).toFixed(1)}`} unit="M" icon={DollarSign} trend="up" trendValue="8%" color="from-green-500/10 to-green-600/5" />
-                  <StatCard label="Stock Activo" value={`${stats.available}`} unit="unidades" icon={Package} trend="stable" color="from-blue-500/10 to-blue-600/5" />
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                  <div className="xl:col-span-2 bg-[#080808] border border-white/5 rounded-[2rem] p-4 shadow-inner">
-                    <div className="flex items-center justify-between mb-10">
-                      <div>
-                        <h3 className="text-xl font-black italic tracking-tighter">RENDIMIENTO DE UNIDADES</h3>
-                        <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest mt-1">Análisis de conversión por vistas</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 transition-colors border border-white/5">
-                          Exportar
-                        </motion.button>
-                      </div>
+        <div className="flex flex-1 overflow-hidden relative">
+          
+          {/* SIDEBAR TÉCNICO (Colapsable) - Usamos motion.div para la transición */}
+          <motion.div 
+            initial={false}
+            animate={{ x: techOpen ? 0 : "-100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute inset-y-0 left-0 w-80 z-30 bg-[#08080a]/95 border-r border-red-900/30 backdrop-blur-xl flex flex-col"
+          >
+            <div className="p-6 border-b border-white/5 flex justify-between items-center">
+              <h3 className="text-red-500 font-bold text-xs tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"/> DATOS TÉCNICOS
+              </h3>
+              <button onClick={() => setTechOpen(false)} className="text-gray-500 hover:text-white transition">←</button>
+            </div>
+             
+            {/* Usamos staggerContainer para que los items aparezcan uno por uno */}
+            <motion.div 
+                variants={containerStagger}
+                initial="hidden"
+                animate={techOpen ? "show" : "hidden"}
+                className="flex-1 overflow-y-auto p-6 space-y-6 tech-scroll"
+            >
+              {carSpecs.map((spec, i) => (
+                <motion.div key={i} variants={fadeInUpSpring} className="p-4 border border-white/5 bg-white/5 hover:border-red-500/30 transition-colors rounded-sm">
+                  <p className="text-[9px] text-red-400 mb-1 uppercase tracking-widest font-bold">{spec.title}</p>
+                  <p className="text-white text-sm font-bold tracking-tighter">{spec.value}</p>
+                  {spec.progress && (
+                    <div className="w-full bg-black h-1 mt-2 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${spec.progress}%` }}
+                        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+                        className="bg-red-600 h-full shadow-[0_0_10px_#ff003c]" 
+                       />
                     </div>
-
-                    <div className="space-y-6">
-                      {stock.slice(0, 5).map((car, idx) => {
-                        const conversion = Math.round(((car.interesados || 0) / (car.vistas || 1)) * 100);
-                        const lastPrice = car.precioHistorial?.[car.precioHistorial.length - 2]?.price;
-                        const hasDropped = lastPrice && car.precio < lastPrice;
-
-                        return (
-                          <motion.div key={car.id} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: idx * 0.1 }} className="group relative">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-900 border border-white/5 relative">
-                                  {car.imagenes && car.imagenes.length > 0 ? (
-                                    <AutoCarousel images={car.imagenes} interval={3500} />
-                                  ) : (
-                                    <img src={car.imagen || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800'} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt={`${car.marca} ${car.modelo}`} />
-                                  )}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                                <div>
-                                  <p className="font-black text-sm text-neutral-200 italic">{car.marca} {car.modelo}</p>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-tighter">{car.vistas} Vistas</span>
-                                    <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-tighter">• {car.interesados} Leads</span>
-                                    {hasDropped && (
-                                      <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1 text-[8px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tighter">
-                                        <ArrowDownRight size={10} /> Oportunidad
-                                      </motion.span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-mono font-bold">{car.precio.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}</p>
-                                <p className={`text-[9px] font-bold uppercase tracking-widest ${conversion > 10 ? 'text-green-500' : 'text-neutral-500'}`}>Tasa: {conversion}%</p>
-                              </div>
-                            </div>
-                            <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(conversion * 5, 100)}%` }} transition={{ delay: idx * 0.1 + 0.3, duration: 0.8 }} className={`h-full rounded-full ${conversion > 10 ? 'bg-gradient-to-r from-yellow-600 to-yellow-400' : 'bg-neutral-700'}`} />
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#080808] border border-white/5 rounded-[2.5rem] p-4 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                    <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-0 right-0 p-20 bg-blue-500/5 blur-[80px] rounded-full" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-neutral-500 mb-8">Composición Activa</h3>
-
-                    <div className="w-48 h-48 relative flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-neutral-900" />
-                        <motion.circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={502} initial={{ strokeDashoffset: 502 }} animate={{ strokeDashoffset: 150 }} transition={{ duration: 1.5, ease: "easeOut" }} className="text-red-500" strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5, type: "spring" }} className="text-3xl font-black italic tracking-tighter">
-                          70<span className="text-red-500">%</span>
-                        </motion.p>
-                        <p className="text-[10px] font-black uppercase text-neutral-500">Stock Propio</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-10 grid grid-cols-2 gap-4 w-full">
-                      <motion.div whileHover={{ scale: 1.05 }} className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5 hover:border-red-500/30 transition-all cursor-pointer">
-                        <p className="text-[9px] font-bold text-neutral-500 uppercase mb-1">Propio</p>
-                        <p className="text-lg font-black text-white italic">{stock.filter((c) => c.tipoVenta === 'Propio').length}u</p>
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.05 }} className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5 hover:border-red-500/30 transition-all cursor-pointer">
-                        <p className="text-[9px] font-bold text-neutral-500 uppercase mb-1">Consig.</p>
-                        <p className="text-lg font-black text-white italic">{stock.filter((c) => c.tipoVenta === 'Consignado').length}u</p>
-                      </motion.div>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                  {spec.meta && <p className="text-[8px] text-gray-500 mt-2 font-mono border-t border-white/5 pt-1">{spec.meta}</p>}
+                </motion.div>
+              ))}
+              
+              <motion.div variants={fadeInUpSpring} className="p-4 border border-white/5 bg-white/5">
+                 <p className="text-[9px] text-red-400 mb-1 uppercase tracking-widest font-bold">OBSERVACIONES</p>
+                 <p className="text-[10px] text-gray-400 italic">"{car.obs}"</p>
               </motion.div>
-            )}
+            </motion.div>
 
-            {view === 'inventory' && (
-              <InventoryView stock={stock} onEdit={(car) => { setEditingCar(car); setView('form'); }} onDelete={onDelete} />
-            )}
+            <div className="p-6 border-t border-white/5">
+              <div className="flex items-center gap-4 opacity-50 hover:opacity-100 transition-opacity">
+                <div className="w-16 h-16 bg-white p-1">
+                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${car.id}`} alt="QR" className="w-full h-full" />
+                </div>
+                <div className="text-[8px] text-gray-400 leading-tight font-mono">
+                  CERTIFICADO DIGITAL<br/>
+                  BLOCKCHAIN ID:<br/>
+                  <span className="text-white">0x{car.id.toString(16).padEnd(8,'0')}...</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
-            {view === 'form' && (
-              <VehicleForm
-                car={editingCar}
-                onCancel={() => setView('inventory')}
-                onSubmit={(data) => {
-                  if (editingCar) {
-                    onUpdate(data);
-                  } else {
-                    onAdd(data);
-                  }
-                  setView('inventory');
-                }}
-              />
-            )}
+          {/* VISOR CENTRAL */}
+          <div 
+            ref={containerRef}
+            onMouseMove={handleMouseMove}
+            className={`flex-1 relative flex items-center justify-center bg-[#050505] overflow-hidden ${zoomActive ? 'cursor-none' : 'cursor-crosshair'}`}
+          >
+            {/* Lente de Zoom Optimizada */}
+            <div 
+              ref={lensRef}
+              className={`fixed w-[180px] h-[180px] border-2 border-red-500 rounded-full pointer-events-none z-50 shadow-[0_0_30px_rgba(255,0,60,0.3)] overflow-hidden bg-black ${zoomActive ? 'block' : 'hidden'}`}
+              style={{ backgroundRepeat: 'no-repeat', top: 0, left: 0 }}
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                <div className="w-full h-[1px] bg-red-500"/>
+                <div className="h-full w-[1px] bg-red-500 absolute"/>
+              </div>
+            </div>
 
-            {view === 'analytics' && (
-              <AnalyticsView stock={stock} stats={stats} />
+            <div className="relative group perspective-1000">
+              <AnimatePresence mode="wait">
+                <motion.img 
+                  key={currentImgIdx}
+                  ref={imageRef}
+                  src={car.imagenes[currentImgIdx] || "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=1200"}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.4 }}
+                  alt="Vehicle Analysis" 
+                  className="max-w-full max-h-[70vh] object-contain rounded-sm border border-white/5 shadow-2xl"
+                />
+              </AnimatePresence>
+              
+              {/* Hotspots Inteligentes REALES (Solo se muestran si no hay zoom activo) */}
+              {!zoomActive && car.hotspots && car.hotspots.length > 0 && car.hotspots.map((spot, idx) => (
+                <div
+                  key={spot.id}
+                  className="absolute cursor-pointer z-30" // Aseguramos z-index
+                  // Usamos porcentajes para la posición
+                  style={{ top: `${spot.y}%`, left: `${spot.x}%` }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 1 + (idx * 0.2), type: "spring" }}
+                    className="relative group/hot"
+                    // Centramos el punto exacto en la coordenada
+                    style={{ transform: 'translate(-50%, -50%)' }}
+                  >
+                    {/* El punto rojo pulsante */}
+                    <div className="w-6 h-6 bg-red-600/30 border-2 border-red-500 rounded-full flex items-center justify-center animate-pulse hover:bg-red-600/50 transition-colors">
+                      <div className="w-2 h-2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                    </div>
+
+                    {/* Tooltip Conector */}
+                    <div className="absolute left-8 top-1/2 -translate-y-1/2 w-64 hidden group-hover/hot:block z-40 pointer-events-none">
+                      <div className="flex items-center">
+                        <motion.div initial={{ width: 0 }} animate={{ width: 40 }} className="h-[2px] bg-gradient-to-r from-red-500 to-red-500/10"></motion.div>
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-black/90 border-l-[3px] border-red-500 p-4 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex-1 rounded-r-sm relative overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 p-4 bg-red-500/10 blur-xl rounded-full"></div>
+                          <p className="text-[10px] text-red-500 font-black mb-1 tracking-[0.2em] uppercase relative z-10">{spot.label}</p>
+                          <p className="text-sm text-white font-bold leading-tight relative z-10">{spot.detail}</p>
+                        </motion.div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              ))}
+            </div>
+
+            {/* HUD Central Inferior */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 z-20">
+              <motion.button 
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => setTechOpen(!techOpen)}
+                className={`px-8 py-3 bg-black/50 border border-white/20 text-white text-[10px] font-bold tracking-[0.2em] hover:bg-white hover:text-black transition-all uppercase ${techOpen ? 'bg-white text-black' : ''}`}
+              >
+                Ficha Técnica
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => setZoomActive(!zoomActive)}
+                className={`px-8 py-3 border text-[10px] font-bold tracking-[0.2em] transition-all uppercase flex items-center gap-2 ${zoomActive ? 'bg-red-600 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.5)]' : 'bg-black/50 border-white/20 text-gray-400 hover:border-red-500 hover:text-white'}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${zoomActive ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
+                Zoom Precisión
+              </motion.button>
+            </div>
+
+            {/* Navegación de Galería Simple */}
+            {car.imagenes.length > 1 && (
+               <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
+                  {car.imagenes.map((_, i) => (
+                      <button 
+                        key={i} 
+                        onClick={() => setCurrentImgIdx(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${currentImgIdx === i ? 'bg-red-600 scale-150' : 'bg-white/20 hover:bg-white'}`}
+                      />
+                  ))}
+               </div>
             )}
-          </AnimatePresence>
+          </div>
+
+          {/* PANEL DERECHO: DATOS Y FINANZAS */}
+          {/* Stagger para los elementos del panel derecho */}
+          <motion.aside 
+            variants={containerStagger}
+            initial="hidden"
+            animate="show"
+            className="w-[400px] bg-black border-l border-white/10 p-8 flex flex-col justify-between overflow-y-auto z-20"
+          >
+            <div>
+              <motion.div variants={fadeInUpSpring}>
+                <DecryptText 
+                    text={car.marca} 
+                    className="text-4xl font-black italic tracking-tighter text-white mb-1 block glitch-effect" 
+                />
+              </motion.div>
+              <motion.p variants={fadeInUpSpring} className="text-[10px] text-red-600 tracking-[0.4em] font-bold mb-10 uppercase border-b border-red-900/30 pb-4">
+                {car.modelo} {car.version}
+              </motion.p>
+              
+              {/* Banner de Finanzas Animado */}
+              <motion.div variants={fadeInUpSpring} className="relative p-8 mb-10 text-center border border-white/10 bg-[#050505] overflow-hidden group hover:border-red-600/50 transition-colors">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-900/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <p className="relative z-10 text-[9px] text-red-500 tracking-[0.3em] mb-4 font-bold uppercase">Plan High-Impact</p>
+                <div className="relative z-10 flex items-center justify-center space-x-3">
+                  <span className="text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(255,0,60,0.5)]">
+                    24
+                  </span>
+                  <div className="text-left leading-none">
+                    <p className="text-xl font-bold text-white uppercase italic">Cuotas</p>
+                    <p className="text-[9px] text-gray-500 uppercase mt-1">Sin Interés*</p>
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50" />
+              </motion.div>
+
+              <motion.div variants={containerStagger} className="space-y-6">
+                <motion.div variants={fadeInUpSpring} className="flex justify-between items-end border-b border-white/5 pb-6">
+                  <div>
+                    <p className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Valor Unidad</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">{formatPrice(car.precio)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] text-green-500 font-bold uppercase tracking-widest mb-1">Status</p>
+                    <p className="text-lg font-bold text-white uppercase">{car.estado || 'Disponible'}</p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            <motion.div variants={containerStagger} className="space-y-3 mt-4">
+              <motion.button 
+                variants={fadeInUpSpring}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => onContact(car)}
+                className="relative w-full py-5 bg-red-600 overflow-hidden group cursor-pointer"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <span className="relative text-white font-black italic tracking-widest text-xs uppercase flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                  Iniciar Protocolo Reserva
+                </span>
+              </motion.button>
+              
+              <motion.button 
+                variants={fadeInUpSpring}
+                whileHover={{ scale: 1.02, backgroundColor: "rgba(34, 197, 94, 0.1)" }} whileTap={{ scale: 0.98 }}
+                onClick={() => onContact(car)}
+                className="w-full py-4 flex items-center justify-center gap-3 border border-green-500/30 text-green-500 font-bold tracking-widest text-[10px] uppercase transition-all hover:border-green-500"
+              >
+                <span>◆</span> Contacto Quántico
+              </motion.button>
+            </motion.div>
+          </motion.aside>
         </div>
-      </main>
-    </div>
+
+        {/* FOOTER BARRA DE ESTADO */}
+        <footer className="px-6 py-2 bg-[#050505] border-t border-white/10 flex justify-between items-center text-[9px] text-gray-600 uppercase tracking-widest select-none">
+          <div className="flex space-x-8">
+            <span className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"/>
+              NET: 12ms
+            </span>
+            <span className="text-red-900/80">SECURE_TUNNEL_V2</span>
+            <span className="font-mono text-gray-500">
+              X:{coords.x.toString().padStart(4, '0')} Y:{coords.y.toString().padStart(4, '0')}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>INTEGRIDAD DE DATOS</span>
+            <div className="w-24 h-1 bg-gray-800 rounded-full overflow-hidden">
+               <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: "98%" }}
+                transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
+                className="h-full bg-red-600 shadow-[0_0_10px_red]" 
+               />
+            </div>
+            <span className="text-white">98%</span>
+          </div>
+        </footer>
+      </motion.div>
+    </motion.div>
   );
 };
 
-// ===== 4. EXPORT DEFAULT =====
+const Footer = () => {
+  return (
+    <footer className="bg-[#0a0a0a] border-t border-white/5 pt-16 pb-8 mt-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          
+          {/* Columna 1: Branding */}
+          <div className="col-span-1 md:col-span-1">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20">
+                <Car className="text-white" size={24} />
+              </div>
+              <span className="text-white font-black text-2xl tracking-tighter uppercase">
+                Auto<span className="text-red-600">Efec</span>
+              </span>
+            </div>
+            <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+              Tu destino premium para la compra y venta de vehículos. Calidad garantizada y financiamiento a tu medida.
+            </p>
+          </div>
 
-export default function SellerPortal({ stock, onAdd, onUpdate, onDelete, onBack }: SellerPortalProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [notifications] = useState<Notification[]>([
-    { id: 1, text: 'Baja de precio detectada en vehículo premium', type: 'price', time: '2h' },
-    { id: 2, text: 'Nueva oferta recibida por BMW M4', type: 'lead', time: '5h' },
-    { id: 3, text: 'Stock crítico en SUV compactos', type: 'warning', time: '1d' },
-  ]);
+          {/* Columna 2: Enlaces Rápidos */}
+          <div>
+            <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Navegación</h4>
+            <ul className="space-y-4">
+              {['Catálogo', 'Vender mi Auto', 'Financiamiento', 'Seguros'].map((item) => (
+                <li key={item}>
+                  <a href="#" className="text-zinc-500 hover:text-red-500 text-sm transition-colors flex items-center gap-2 group">
+                    <ChevronRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all text-red-500" />
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-  if (!isLoggedIn) {
-    return <LoginScreen onLogin={() => setIsLoggedIn(true)} onBack={onBack} />;
-  }
+          {/* Columna 3: Contacto Directo */}
+          <div>
+            <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Contacto</h4>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-3 text-zinc-500 text-sm">
+                <MessageCircle size={18} className="text-red-600" />
+                +56 9 1234 5678
+              </li>
+              <li className="flex items-center gap-3 text-zinc-500 text-sm">
+                <Search size={18} className="text-red-600" />
+                contacto@autoefec.cl
+              </li>
+            </ul>
+          </div>
+
+          {/* Columna 4: Horario (Importante para ventas) */}
+          <div>
+            <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Horarios</h4>
+            <div className="bg-zinc-900/50 border border-white/5 p-4 rounded-2xl space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-zinc-400">Lun - Vie:</span>
+                <span className="text-zinc-200">09:00 - 19:00</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-zinc-400">Sábados:</span>
+                <span className="text-zinc-200">10:00 - 14:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Barra Inferior */}
+        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-zinc-600 text-[10px] uppercase font-bold tracking-widest">
+            © 2026 AUTOEFEC - CATÁLOGO PROFESIONAL
+          </p>
+          <div className="flex gap-6">
+            <motion.div whileHover={{ scale: 1.2, color: "#dc2626" }} className="text-zinc-600 cursor-pointer">
+                <Share2 size={16} />
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.2, color: "#dc2626" }} className="text-zinc-600 cursor-pointer">
+                <Heart size={16} />
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+function App() {
+  const [stock, setStock] = useState<Vehiculo[]>(() => loadStockFromLocalStorage());
+  const [selectedSeller, setSelectedSeller] = useState('Todos');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [selectedCar, setSelectedCar] = useState<Vehiculo | null>(null);
+  const [notification, setNotification] = useState<{ message: string; sub: string } | null>(null);
+  const [currentView, setCurrentView] = useState<'catalog' | 'seller'>('catalog');
+
+  const [filters, setFilters] = useState({
+    marca: 'Todas',
+    yearMin: '',
+    yearMax: '',
+    priceMin: '',
+    priceMax: '',
+    kmMin: '',
+    kmMax: '',
+    combustible: 'Todos',
+    transmision: 'Todas',
+    traccion: 'Todas',
+    tipoVenta: 'Todos',
+    financiable: 'Todos',
+    duenosMax: '',
+    aire: 'Todos',
+    neumaticos: 'Todos'
+  });
+
+  // --- LÓGICA DE ACTUALIZACIÓN DEL STOCK ---
+
+  // Agregar Auto
+  const handleAddCar = (car: Vehiculo) => {
+    console.log('🚗 Nuevo auto recibido:', car);
+    if (!car.imagenes || car.imagenes.length === 0) {
+      console.warn('⚠️ No se recibieron imágenes, usando placeholder');
+      car.imagenes = ["https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"];
+    }
+
+    setStock((prev) => {
+      const updated = [car, ...prev];
+      saveStockToLocalStorage(updated);
+      return updated;
+    });
+  };
+
+  // Actualizar Auto (NUEVO - REQUERIDO POR SellerPortal)
+  const handleUpdateCar = (updatedCar: Vehiculo) => {
+    setStock((prev) => {
+      const updated = prev.map(car => car.id === updatedCar.id ? updatedCar : car);
+      saveStockToLocalStorage(updated);
+      return updated;
+    });
+    console.log('✅ Auto actualizado:', updatedCar.id);
+  };
+
+  // Eliminar Auto (NUEVO - REQUERIDO POR SellerPortal)
+  const handleDeleteCar = (id: number) => {
+    if (window.confirm('¿Estás seguro de eliminar este vehículo?')) {
+        setStock((prev) => {
+            const updated = prev.filter(car => car.id !== id);
+            saveStockToLocalStorage(updated);
+            return updated;
+        });
+        console.log('🗑️ Auto eliminado:', id);
+    }
+  };
+
+  // Escuchar cambios en localStorage hechos desde otras pestañas/ventanas
+  React.useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'autos_catalogo_stock') {
+        setStock(loadStockFromLocalStorage());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  // Sync stock to localStorage on change
+  useEffect(() => {
+    saveStockToLocalStorage(stock);
+  }, [stock]);
+
+  const sellers = useMemo(() => ['Todos', ...Array.from(new Set(stock.map(c => c.vendedor)))], [stock]);
+  const marcas = useMemo(() => ['Todas', ...Array.from(new Set(stock.map(c => c.marca))).sort()], [stock]);
+
+
+  const filteredStock = useMemo(() => {
+    return stock.filter(car => {
+      const matchSeller = selectedSeller === 'Todos' || car.vendedor === selectedSeller;
+
+      const searchLower = searchTerm.toLowerCase();
+      const matchSearch =
+        car.marca.toLowerCase().includes(searchLower) ||
+        car.modelo.toLowerCase().includes(searchLower) ||
+        car.ano.toString().includes(searchLower) ||
+        car.version.toLowerCase().includes(searchLower);
+
+      const matchMarca = filters.marca === 'Todas' || car.marca === filters.marca;
+      const matchYearMin = !filters.yearMin || car.ano >= parseInt(filters.yearMin);
+      const matchYearMax = !filters.yearMax || car.ano <= parseInt(filters.yearMax);
+      const matchPriceMin = !filters.priceMin || car.precio >= parseInt(filters.priceMin);
+      const matchPriceMax = !filters.priceMax || car.precio <= parseInt(filters.priceMax);
+      const matchKmMin = !filters.kmMin || car.km >= parseInt(filters.kmMin);
+      const matchKmMax = !filters.kmMax || car.km <= parseInt(filters.kmMax);
+      const matchCombustible = filters.combustible === 'Todos' || car.combustible === filters.combustible;
+      const matchTransmision = filters.transmision === 'Todas' || car.transmision.includes(filters.transmision);
+      const matchTraccion = filters.traccion === 'Todas' || car.traccion === filters.traccion;
+      const matchTipoVenta = filters.tipoVenta === 'Todos' || car.tipoVenta === filters.tipoVenta;
+      const matchFinanciable = filters.financiable === 'Todos' ||
+        (filters.financiable === 'Si' ? car.financiable : !car.financiable);
+      const matchDuenos = !filters.duenosMax || car.duenos <= parseInt(filters.duenosMax);
+      const matchAire = filters.aire === 'Todos' || (filters.aire === 'Si' ? car.aire : !car.aire);
+      const matchNeumaticos = filters.neumaticos === 'Todos' || car.neumaticos === filters.neumaticos;
+
+      return matchSeller && matchSearch && matchMarca && matchYearMin && matchYearMax &&
+        matchPriceMin && matchPriceMax && matchKmMin && matchKmMax && matchCombustible &&
+        matchTransmision && matchTraccion && matchTipoVenta && matchFinanciable &&
+        matchDuenos && matchAire && matchNeumaticos;
+    });
+  }, [stock, selectedSeller, searchTerm, filters]);
+
+  const toggleFavorite = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    setFavorites(prev =>
+      prev.includes(id) ? prev.filter(fav => fav !== id) : [...prev, id]
+    );
+  };
+
+  const handleContact = (car: Vehiculo) => {
+    const phone = "56912345678";
+    const text = `Hola ${car.vendedor}, estoy interesado en el ${car.marca} ${car.modelo} (${car.ano}) que vi en Autoefec.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+
+    setNotification({
+      message: `¡Redirigiendo a WhatsApp!`,
+      sub: `Contactando a ${car.vendedor}...`
+    });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      marca: 'Todas',
+      yearMin: '',
+      yearMax: '',
+      priceMin: '',
+      priceMax: '',
+      kmMin: '',
+      kmMax: '',
+      combustible: 'Todos',
+      transmision: 'Todas',
+      traccion: 'Todas',
+      tipoVenta: 'Todos',
+      financiable: 'Todos',
+      duenosMax: '',
+      aire: 'Todos',
+      neumaticos: 'Todos'
+    });
+    setSearchTerm('');
+    setSelectedSeller('Todos');
+  };
+
+
 
   return (
-    <LionsEliteDashboard
-      stock={stock}
-      notifications={notifications}
-      onAdd={onAdd}
-      onUpdate={onUpdate}
-      onDelete={onDelete}
-      onBack={onBack}
-      onLogout={() => setIsLoggedIn(false)}
+    <div className="min-h-screen bg-black text-gray-100 font-sans selection:bg-red-600/30 overflow-x-hidden">
+      <div className="relative">
+        {/* Header Superior */}
+        <motion.header
+          // Animación Premium: Entrada del header con spring
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ type: "spring", stiffness: 120, damping: 20 }}
+          className="sticky top-0 z-50 bg-black/95 backdrop-blur-2xl border-b border-gray-800/50"
+        >
+          {/* Barra superior con contactos */}
+          <div className="w-full bg-gray-900/50 border-b border-gray-800/30">
+            <div className="w-full px-6 py-2">
+              <div className="flex items-center justify-between text-xs">
+                {/* Dirección */}
+                <div className="hidden lg:flex items-center gap-2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span>Av. Principal #123, Concepción, Chile</span>
+                </div>
+
+                {/* WhatsApp en 2 filas */}
+                <div className="flex items-center gap-3 ml-auto">
+                  <div className="flex flex-col gap-1">
+                    <a href="https://wa.me/56912345678" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 1234 5678</span>
+                    </a>
+                    <a href="https://wa.me/56987654321" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 8765 4321</span>
+                    </a>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <a href="https://wa.me/56911223344" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 1122 3344</span>
+                    </a>
+                    <a href="https://wa.me/56955667788" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-green-400 hover:text-green-300 transition-colors">
+                      <MessageCircle size={14} />
+                      <span className="font-medium">+56 9 5566 7788</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra principal */}
+          <div className="w-full px-6 h-20 flex items-center justify-between">
+            <motion.div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => setCurrentView('catalog')}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <img
+                src="/logos/autoefec.png"
+                alt="Autoefec Logo"
+                className="h-12 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Ctext x='0' y='30' font-size='24' fill='%23dc2626' font-weight='bold' font-style='italic'%3EAUTOEFEC%3C/text%3E%3C/svg%3E";
+                }}
+              />
+            </motion.div>
+
+            <div className="flex items-center gap-4">
+              {currentView === 'catalog' && (
+                <motion.button 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="hidden md:flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors font-medium"
+                >
+                  Favoritos <motion.span key={favorites.length} initial={{ scale: 1.5 }} animate={{ scale: 1 }} className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{favorites.length}</motion.span>
+                </motion.button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.05, backgroundColor: currentView === 'catalog' ? "#dc2626" : "rgba(31, 41, 55, 0.8)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setCurrentView(currentView === 'catalog' ? 'seller' : 'catalog')}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg ${currentView === 'catalog'
+                    ? 'bg-white text-black hover:text-white'
+                    : 'bg-gray-800 text-red-400 border border-red-900/50'
+                  }`}
+              >
+                {currentView === 'catalog' ? (
+                  <>
+                    <LayoutDashboard size={18} />
+                    <span>Portal Vendedor</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowLeft size={18} />
+                    <span>Volver al Catálogo</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </motion.header>
+
+        {/* Hero Section - Con slogan */}
+{currentView === 'catalog' && (
+  <div className="relative h-[350px] w-full overflow-hidden flex items-center justify-center">
+    {/* Fondo Parallax sutil */}
+    <motion.div 
+      className="absolute inset-0 z-0"
+      initial={{ scale: 1.2 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 10, ease: "easeOut" }} // Movimiento muy lento y suave
+    >
+      <img src="/DSC06884.JPG" className="w-full h-full object-cover opacity-40" alt="Background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/60 to-black" />
+    </motion.div>
+    
+    {/* Contenido del Héroe con Stagger */}
+    <motion.div 
+        variants={containerStagger}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 text-center px-4 max-w-4xl"
+    >
+      <motion.h1 variants={fadeInUpSpring} className="text-6xl md:text-8xl font-black italic text-white tracking-tighter mb-4 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
+        AUTO<span className="text-red-600 text-glow">EFEC</span>
+      </motion.h1>
+      <motion.div variants={fadeInUpSpring} className="h-1 w-32 bg-red-600 mx-auto mb-6 rounded-full" />
+      
+      <motion.p variants={fadeInUpSpring} className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-lg">
+        Tu Auto Ideal Te Está Esperando
+      </motion.p>
+      
+      <motion.p variants={fadeInUpSpring} className="text-gray-300 text-base md:text-lg font-medium drop-shadow-md max-w-2xl mx-auto">
+        Vehículos seleccionados con garantía y financiamiento disponible. 
+        <span className="text-red-500 font-bold"> Más de 15 años</span> conectando familias con su auto perfecto.
+      </motion.p>
+
+      <motion.div variants={containerStagger} className="flex items-center justify-center gap-4 mt-6 flex-wrap">
+         {["Garantía Incluida", "Financiamiento Fácil", "Revisión Técnica"].map((text, i) => (
+             <motion.div key={i} variants={fadeInUpSpring} className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full">
+                <p className="text-xs font-bold text-white">✓ {text}</p>
+             </motion.div>
+         ))}
+      </motion.div>
+    </motion.div>
+
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-red-900/20 blur-[120px] pointer-events-none"
+      animate={{
+        scale: [1, 1.1, 1],
+        opacity: [0.3, 0.4, 0.3],
+      }}
+      transition={{
+        duration: 8,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
     />
+  </div>
+)}
+      </div>
+
+      {/* CUERPO PRINCIPAL CON TRANSICIONES ENTRE VISTAS */}
+      <main className="w-full px-6 pb-20 min-h-[600px]">
+        <AnimatePresence mode="wait">
+          {currentView === 'catalog' ? (
+            // Animación Premium: Transición de página (Slide In/Out)
+            <motion.div
+                key="catalog-view"
+                variants={pageTransitionVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="flex flex-col md:flex-row gap-8"
+            >
+
+              {/* COLUMNA IZQUIERDA: FILTROS FIJOS */}
+              <aside className="w-full md:w-[380px] lg:w-[420px] flex-shrink-0">
+                <div className="sticky top-24">
+                  <div className="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl">
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                      <Filter size={18} className="text-red-600" /> Filtros
+                    </h3>
+
+                    {/* Buscador dentro del Sidebar */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Buscar..."
+                        className="w-full bg-black border border-gray-800 rounded-xl py-2 pl-10 pr-3 text-sm focus:border-red-600 transition-all"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Filtros Compactos */}
+                    <div className="space-y-3">
+                      {/* Vendedor y Marca en una fila */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                          <select
+                            value={selectedSeller}
+                            onChange={(e) => setSelectedSeller(e.target.value)}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            {sellers.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Marca</label>
+                          <select
+                            value={filters.marca}
+                            onChange={(e) => setFilters({ ...filters, marca: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            {marcas.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Año */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Año</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Desde"
+                            value={filters.yearMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, yearMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Hasta"
+                            value={filters.yearMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, yearMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Precio */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Precio (M)</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={filters.priceMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max"
+                            value={filters.priceMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Kilometraje */}
+                      <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Km</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={filters.kmMin}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, kmMin: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max"
+                            value={filters.kmMax}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs focus:border-red-600 outline-none"
+                            onChange={(e) => setFilters({ ...filters, kmMax: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Combustible y Transmisión */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Combustible</label>
+                          <select
+                            value={filters.combustible}
+                            onChange={(e) => setFilters({ ...filters, combustible: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            <option value="Todos">Todos</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Eléctrico">Eléctrico</option>
+                            <option value="Híbrido">Híbrido</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Transmisión</label>
+                          <select
+                            value={filters.transmision}
+                            onChange={(e) => setFilters({ ...filters, transmision: e.target.value })}
+                            className="w-full bg-black border border-gray-800 rounded-lg py-1.5 px-2 text-xs text-white focus:border-red-600"
+                          >
+                            <option value="Todas">Todas</option>
+                            <option value="Automática">Auto</option>
+                            <option value="Mecánica">Manual</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Checkboxes compactos */}
+                      <div className="pt-2 border-t border-gray-800">
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Características</label>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Tracción 4x4 */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.traccion === '4x4'}
+                              onChange={(e) => setFilters({ ...filters, traccion: e.target.checked ? '4x4' : 'Todas' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">4x4</span>
+                          </label>
+
+                          {/* Aire */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.aire === 'Si'}
+                              onChange={(e) => setFilters({ ...filters, aire: e.target.checked ? 'Si' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">A/C</span>
+                          </label>
+
+                          {/* Financiable */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.financiable === 'Si'}
+                              onChange={(e) => setFilters({ ...filters, financiable: e.target.checked ? 'Si' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">Financ.</span>
+                          </label>
+
+                          {/* Propio */}
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.tipoVenta === 'Propio'}
+                              onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.checked ? 'Propio' : 'Todos' })}
+                              className="w-4 h-4 rounded border-gray-700 bg-black text-red-600 focus:ring-red-600 focus:ring-offset-0"
+                            />
+                            <span className="text-xs text-gray-400 group-hover:text-white transition-colors">Propio</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Botón Limpiar con micro-interacción */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, backgroundColor: "rgba(220, 38, 38, 0.2)" }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={clearAllFilters}
+                        className="w-full mt-3 bg-red-600/10 border border-red-900/30 text-red-400 font-bold py-2 rounded-lg transition-all text-xs flex items-center justify-center gap-2"
+                      >
+                        <X size={14} />
+                        Limpiar Filtros
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              {/* COLUMNA DERECHA: GRILLA DE AUTOS */}
+              <div className="flex-grow">
+                <div className="mb-6 flex justify-between items-end">
+                  <p className="text-gray-400 text-sm font-medium">
+                    Mostrando <span className="text-white font-bold">{filteredStock.length}</span> vehículos
+                  </p>
+                </div>
+
+                {filteredStock.length > 0 ? (
+                  // Animación Premium: Staggered Grid (Aparición en cascada)
+                  <motion.div 
+                    variants={containerStagger}
+                    initial="hidden"
+                    animate="show"
+                    className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6"
+                  >
+                    {filteredStock.map((car) => (
+                      <motion.div key={car.id} variants={fadeInUpSpring}>
+                        <CarCard
+                          car={car}
+                          onClick={setSelectedCar}
+                          isFavorite={favorites.includes(car.id)}
+                          onToggleFavorite={toggleFavorite}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20 bg-gray-900/30 rounded-[3rem] border border-dashed border-gray-800">
+                    <Search size={48} className="mx-auto text-gray-700 mb-4" />
+                    <p className="text-xl font-bold text-gray-400">No encontramos lo que buscas</p>
+                    <button onClick={clearAllFilters} className="mt-4 text-red-500 font-bold hover:underline">Ver todo el stock</button>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          ) : (
+             // VISTA DE VENDEDOR REAL (INTEGRADA)
+             <motion.div
+                key="seller-view"
+                variants={pageTransitionVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="w-full"
+             >
+                <SellerPortal 
+                  stock={stock} 
+                  onAdd={handleAddCar} 
+                  onUpdate={handleUpdateCar} 
+                  onDelete={handleDeleteCar} 
+                  onBack={() => setCurrentView('catalog')}
+                />
+             </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+      {/* --- INICIO DEL FOOTER --- */}
+      <Footer />
+      {/* --- FIN DEL FOOTER --- */}
+
+      {/* Modales y Notificaciones con AnimatePresence */}
+      <AnimatePresence>
+        {selectedCar && <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} onContact={handleContact} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {notification && (
+          // Animación Premium: Notificación con entrada tipo resorte
+          <motion.div
+            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 50, opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="fixed bottom-10 right-10 z-[100] bg-[#25D366] text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/20"
+          >
+            <MessageCircle size={28} />
+            <div>
+              <p className="font-black leading-none">{notification.message}</p>
+              <p className="text-xs opacity-80 mt-1">{notification.sub}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+      .text-glow { text-shadow: 0 0 40px rgba(220, 38, 38, 0.6); }
+      select { 
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); 
+        background-position: right 1rem center; 
+        background-repeat: no-repeat; 
+        background-size: 1.25rem; 
+        appearance: none; 
+      }
+      /* Custom scrollbar para el sidebar si es muy largo */
+     .sticky {
+        max-height: none;
+        overflow-y: visible;
+      }
+    `}</style>
+    </div>
   );
 }
+
+export default App;
